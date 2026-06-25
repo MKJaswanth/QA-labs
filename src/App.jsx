@@ -34,6 +34,7 @@ const TestPlansPage = lazy(() => import('./pages/TestPlansPage').then(m => ({ de
 const ActivityPage = lazy(() => import('./pages/ActivityPage').then(m => ({ default: m.ActivityPage })))
 const WorkspaceSettingsPage = lazy(() => import('./pages/WorkspaceSettingsPage').then(m => ({ default: m.WorkspaceSettingsPage })))
 const JoinPage = lazy(() => import('./pages/JoinPage').then(m => ({ default: m.JoinPage })))
+const PublicReportPage = lazy(() => import('./pages/PublicReportPage').then(m => ({ default: m.PublicReportPage })))
 import './App.css'
 
 function NamePicker({ onDone }) {
@@ -204,6 +205,17 @@ function AppShell() {
 }
 
 export function App() {
+  // Public report route — no auth required, render before any auth gate
+  const isPublicReport = window.location.hash.startsWith('#/public-report/')
+  if (isPublicReport) {
+    const projectId = window.location.hash.replace('#/public-report/', '').split('/')[0]
+    return (
+      <Suspense fallback={<div className="pub-report-loading"><div className="app-loading-spinner" /></div>}>
+        <PublicReportPage projectId={projectId} />
+      </Suspense>
+    )
+  }
+
   return (
     <ToastProvider>
       <ConfirmProvider>
