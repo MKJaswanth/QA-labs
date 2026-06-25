@@ -3,9 +3,14 @@ import { useTeamMembers } from './useTeamMembers'
 import { auth } from '../utils/firebase'
 import { getTeamMembersRaw, isDeleted } from '../utils/storage'
 
+export const ADMIN_EMAIL = 'admin@qalabs.com'
+
 export function useUserRole() {
   const { user } = useUser()
   const { members } = useTeamMembers()
+
+  // Super-admin: email-based, bypasses all role restrictions
+  const isAdmin = auth?.currentUser?.email?.toLowerCase() === ADMIN_EMAIL
 
   const currentMember = members.find((m) => {
     if (auth?.currentUser?.uid && m.uid === auth.currentUser.uid) return true
@@ -21,7 +26,10 @@ export function useUserRole() {
   const userIsDeleted = rawRecord ? isDeleted(rawRecord) : false
 
   let role
-  if (userIsDeleted) {
+  if (isAdmin) {
+    // Admin always has QA Lead regardless of stored role or member count
+    role = 'QA Lead'
+  } else if (userIsDeleted) {
     role = 'None'
   } else if (currentMember) {
     // If this user is the only member in the workspace, always grant QA Lead
@@ -34,10 +42,11 @@ export function useUserRole() {
 
   return {
     role,
+    isAdmin,
     isLead: role === 'QA Lead',
     isTester: role === 'Tester',
     isViewer: role === 'Viewer',
-    isDeleted: userIsDeleted,
+    isDeleted: userIsDeleted && !isAdmin,
   }
 }
 

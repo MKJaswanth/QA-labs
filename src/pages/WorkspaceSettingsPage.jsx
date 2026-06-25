@@ -3,7 +3,7 @@ import { PageHeader } from '../components/PageHeader'
 import { useUser } from '../context/UserContext'
 import { useAuth } from '../context/useAuth'
 import { useTeamMembers } from '../hooks/useTeamMembers'
-import { useUserRole } from '../hooks/useUserRole'
+import { useUserRole, ADMIN_EMAIL } from '../hooks/useUserRole'
 import { useConfirm } from '../context/useConfirm'
 import { useToast } from '../context/useToast'
 import { useActivity } from '../hooks/useActivity'
@@ -54,7 +54,7 @@ const WorkspaceIcon = (props) => (
 export function WorkspaceSettingsPage() {
   const { user, updateUser } = useUser()
   const { firebaseUser } = useAuth()
-  const { isLead, role: currentRole } = useUserRole()
+  const { isLead, isAdmin, role: currentRole } = useUserRole()
   const { members, addMember, updateMember, removeMember } = useTeamMembers()
   const { activities } = useActivity()
   const confirm = useConfirm()
@@ -278,8 +278,12 @@ export function WorkspaceSettingsPage() {
                                       {m.name.slice(0, 2).toUpperCase()}
                                     </span>
                                     <div style={{ display: 'grid', gap: '2px' }}>
-                                      <strong style={{ fontSize: '13.5px', color: 'var(--text-strong)' }}>
-                                        {m.name} {isSelf && <span className="text-muted" style={{ fontWeight: 'normal', fontSize: '11px' }}>(You)</span>}
+                                      <strong style={{ fontSize: '13.5px', color: 'var(--text-strong)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                                        {m.name}
+                                        {isSelf && <span className="text-muted" style={{ fontWeight: 'normal', fontSize: '11px' }}>(You)</span>}
+                                        {m.email?.toLowerCase() === ADMIN_EMAIL && (
+                                          <span style={{ fontSize: '10px', fontWeight: 700, background: '#1e3a5f', color: '#fff', padding: '1px 7px', borderRadius: 999, letterSpacing: '0.04em', textTransform: 'uppercase' }}>Admin</span>
+                                        )}
                                       </strong>
                                       {m.email && <span className="text-muted" style={{ fontSize: '11.5px' }}>{m.email}</span>}
                                     </div>
@@ -300,7 +304,7 @@ export function WorkspaceSettingsPage() {
                                   <select
                                     className="inline-select status-select status-select--neutral"
                                     value={m.role || 'Viewer'}
-                                    disabled={isSelf}
+                                    disabled={isSelf && !isAdmin}
                                     onChange={(e) => updateMember({ ...m, role: e.target.value })}
                                   >
                                     <option value="Viewer">Viewer</option>
