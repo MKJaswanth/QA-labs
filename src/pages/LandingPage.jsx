@@ -57,6 +57,30 @@ const demoTabs = [
   { key: 'reports', label: 'Reports' },
 ]
 
+/* ── Tour step data ─────────────────────────────────────────────────────── */
+const tourSteps = [
+  {
+    tabKey: 'dashboard',
+    title: 'See release readiness instantly',
+    description: 'Pass rate, blockers, and module-level status — one glance tells you if you are ready to ship.',
+  },
+  {
+    tabKey: 'runs',
+    title: 'Keyboard-first test execution',
+    description: 'Mark Pass (P), Fail (F), or Blocker (B) in milliseconds. Log a bug inline the moment something breaks.',
+  },
+  {
+    tabKey: 'bugs',
+    title: 'Built-in bug tracker',
+    description: 'Severity, priority, evidence links, and full activity history — no Jira or extra tool needed.',
+  },
+  {
+    tabKey: 'reports',
+    title: 'Share readiness with stakeholders',
+    description: 'One-click reports showing what can ship, what is blocked, and the next QA action — exportable as PDF.',
+  },
+]
+
 /* ── Helpers ────────────────────────────────────────────────────────────────── */
 function scrollToId(id) {
   document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' })
@@ -116,6 +140,11 @@ function DemoRuns() {
   const [tick, setTick] = useState(0)
   useEffect(() => { const id = setInterval(() => setTick((t) => t + 1), 2200); return () => clearInterval(id) }, [])
   const statuses = ['Pass', 'Pass', 'Fail', 'Pass', 'Pass', 'Pass', 'Blocker', 'Pass']
+  // Derive which keyboard key is being pressed based on the current case's status
+  const currentIdx = tick % 9
+  const isExecuting = currentIdx < 8
+  const curStatus = isExecuting ? statuses[currentIdx] : null
+  const highlightKey = curStatus === 'Pass' ? 'P' : curStatus === 'Fail' ? 'F' : curStatus === 'Blocker' ? 'B' : null
   return (
     <div className="ld-panel">
       <div className="ld-panel-head">
@@ -123,15 +152,15 @@ function DemoRuns() {
         <span className="ld-badge ld-badge--running">Executing</span>
       </div>
       <div className="ld-run-progress">
-        <span>Case {Math.min(tick % 9 + 1, 8)} of 8</span>
-        <strong>{Math.min(Math.round(((tick % 9 + 1) / 8) * 100), 100)}%</strong>
+        <span>Case {Math.min(currentIdx + 1, 8)} of 8</span>
+        <strong>{Math.min(Math.round(((currentIdx + 1) / 8) * 100), 100)}%</strong>
       </div>
       <div className="ld-run-bar">
-        <div className="ld-run-fill" style={{ width: `${Math.min(((tick % 9 + 1) / 8) * 100, 100)}%` }} />
+        <div className="ld-run-fill" style={{ width: `${Math.min(((currentIdx + 1) / 8) * 100, 100)}%` }} />
       </div>
       <div className="ld-run-cases">
         {statuses.map((s, i) => {
-          const done = i < (tick % 9 + 1)
+          const done = i < (currentIdx + 1)
           return (
             <div key={i} className={`ld-run-case ${done ? 'ld-run-case--done' : ''}`}>
               <span className="ld-run-case-n">{i + 1}</span>
@@ -143,7 +172,10 @@ function DemoRuns() {
         })}
       </div>
       <div className="ld-run-shortcuts">
-        <span>P Pass</span><span>F Fail</span><span>B Block</span><span>← → navigate</span>
+        <span className={`ld-kbd ${highlightKey === 'P' ? 'ld-kbd--active ld-kbd--pass' : ''}`}>P Pass</span>
+        <span className={`ld-kbd ${highlightKey === 'F' ? 'ld-kbd--active ld-kbd--fail' : ''}`}>F Fail</span>
+        <span className={`ld-kbd ${highlightKey === 'B' ? 'ld-kbd--active ld-kbd--blocker' : ''}`}>B Block</span>
+        <span className="ld-kbd">← → navigate</span>
       </div>
     </div>
   )
@@ -222,6 +254,8 @@ const demoPanels = { dashboard: DemoDashboard, runs: DemoRuns, bugs: DemoBugs, r
 export function LandingPage({ onGetStarted }) {
   const [activeDemo, setActiveDemo] = useState('dashboard')
   const [userInteracted, setUserInteracted] = useState(false)
+  const [tourActive, setTourActive] = useState(false)
+  const [tourStep, setTourStep] = useState(0)
   const [scrollPct, setScrollPct] = useState(0)
 
   // Track scroll progress for the progress bar (throttled via rAF)
@@ -264,9 +298,9 @@ export function LandingPage({ onGetStarted }) {
   const [wedgeRef, wedgeVisible] = useScrollReveal(0.1)
   const [finalRef, finalVisible] = useScrollReveal(0.1)
 
-  // Auto-cycle demo tabs — pauses when user manually clicks a tab
+  // Auto-cycle demo tabs — pauses when user manually clicks a tab or takes the tour
   useEffect(() => {
-    if (userInteracted) return
+    if (userInteracted || tourActive) return
     const keys = demoTabs.map((t) => t.key)
     const id = setInterval(() => {
       setActiveDemo((prev) => {
@@ -275,11 +309,42 @@ export function LandingPage({ onGetStarted }) {
       })
     }, 3500)
     return () => clearInterval(id)
-  }, [userInteracted])
+  }, [userInteracted, tourActive])
+
+  // Tour auto-advance — cycles through tabs with tooltips
+  useEffect(() => {
+    if (!tourActive) return
+    const id = setInterval(() => {
+      setTourStep((prev) => {
+        const next = (prev + 1) % tourSteps.length
+        setActiveDemo(tourSteps[next].tabKey)
+        return next
+      })
+    }, 4500)
+    return () => clearInterval(id)
+  }, [tourActive])
+
+  const startTour = () => {
+    setTourActive(true)
+    setTourStep(0)
+    setActiveDemo(tourSteps[0].tabKey)
+    setUserInteracted(true)
+  }
+
+  const endTour = () => {
+    setTourActive(false)
+    setUserInteracted(false)
+    setTourStep(0)
+  }
 
   const selectDemoTab = (key) => {
     setActiveDemo(key)
-    setUserInteracted(true)
+    if (tourActive) {
+      const stepIdx = tourSteps.findIndex((s) => s.tabKey === key)
+      if (stepIdx >= 0) setTourStep(stepIdx)
+    } else {
+      setUserInteracted(true)
+    }
   }
 
   const DemoPanel = demoPanels[activeDemo]
@@ -320,7 +385,7 @@ export function LandingPage({ onGetStarted }) {
           </div>
 
           {/* Interactive mini-demo */}
-          <div className="lp-hero-visual" aria-hidden="true">
+          <div className="lp-hero-visual">
             <div className="lp-glow" />
             <div className="lp-demo-card">
               <div className="lp-demo-tabs">
@@ -334,9 +399,45 @@ export function LandingPage({ onGetStarted }) {
                     {t.label}
                   </button>
                 ))}
+                <div className="lp-demo-tab-right">
+                  {!tourActive ? (
+                    <button className="ld-tour-tab-btn" type="button" onClick={startTour} title="Take a guided tour">
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <path d="M12 16v-4" />
+                        <path d="M12 8h.01" />
+                      </svg>
+                      Tour
+                    </button>
+                  ) : (
+                    <button className="ld-tour-tab-btn ld-tour-tab-btn--active" type="button" onClick={endTour} title="End tour">
+                      <span className="ld-tour-dot ld-tour-dot--pulse" />
+                      Tour
+                    </button>
+                  )}
+                </div>
               </div>
-              <DemoPanel />
+              <div className="ld-panel-wrap">
+                <DemoPanel />
+                {tourActive && (
+                  <div className="ld-tour-overlay">
+                    <strong className="ld-tour-title">{tourSteps[tourStep].title}</strong>
+                    <p className="ld-tour-desc">{tourSteps[tourStep].description}</p>
+                    <div className="ld-tour-footer">
+                      <div className="ld-tour-dots">
+                        {tourSteps.map((_, i) => (
+                          <span key={i} className={`ld-tour-dot ${i === tourStep ? 'ld-tour-dot--active' : ''}`} />
+                        ))}
+                      </div>
+                      <button className="ld-tour-end-btn" type="button" onClick={endTour}>
+                        End tour
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+
           </div>
         </section>
 

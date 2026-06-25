@@ -6,6 +6,7 @@ import { PageHeader } from '../components/PageHeader'
 import { StatusPill } from '../components/StatusPill'
 import { StepBuilder } from '../components/StepBuilder'
 import { TagInput, TagList } from '../components/TagInput'
+import { CommentsPanel } from '../components/CommentsPanel'
 import { useConfirm } from '../context/useConfirm'
 import { useToast } from '../context/useToast'
 import { useUser } from '../context/UserContext'
@@ -142,6 +143,7 @@ export function TestCaseDetailPage() {
   return (
     <>
       <PageHeader
+        backTo={`/projects/${projectId}/test-cases`}
         title={tc.title}
         description={tc.module ? `Module: ${tc.module}` : 'No module'}
         action={
@@ -361,6 +363,20 @@ export function TestCaseDetailPage() {
                 </table>
               </div>
             )}
+          </div>
+
+          {/* Comments */}
+          <div className="panel">
+            <div className="section-header">
+              <h2>Discussion</h2>
+            </div>
+            <CommentsPanel
+              projectId={projectId}
+              entityType="testCase"
+              entityId={testCaseId}
+              entityTitle={tc.title}
+              entityOwnerName={tc.assignee || tc.createdByName}
+            />
           </div>
 
         </div>

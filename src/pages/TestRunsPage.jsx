@@ -22,9 +22,12 @@ import { isFirebaseEnabled, auth } from '../utils/firebase'
 import { saveRunDraftRemote, deleteRunDraftRemote, logActivityRemote } from '../utils/remoteStorage'
 import { JUnitUploadModal } from '../components/JUnitUploadModal'
 import { testRunMatchesSearch } from '../utils/entitySearch'
+import { useRequirements } from '../hooks/useRequirements'
+import { getPlanTestCases } from '../utils/planMetrics'
 
 const BUG_STATUSES = ['Open', 'In review', 'Closed']
 const SEVERITIES = ['Critical', 'Major', 'Minor']
+const PRIORITIES = ['High', 'Medium', 'Low']
 
 function failingModules(cases = []) {
   const counts = cases.reduce((acc, tc) => {
@@ -106,6 +109,7 @@ export function TestRunsPage() {
   const { runs, addRun, refresh } = useTestRuns(projectId)
   const { plans, linkRunToPlan } = useTestPlans(projectId)
   const { sharedSteps } = useSharedSteps(projectId)
+  const { requirements } = useRequirements(projectId)
   const project = projects.find((p) => p.id === projectId)
 
   const { firebaseUser } = useAuth()
@@ -186,7 +190,36 @@ export function TestRunsPage() {
         setMode('setup')
       }, 0)
     }
+
+    // Auto-populate from a Test Plan (e.g. "Start a run" from the plan detail page)
+    const planIdParam = searchParams.get('planId')
+    if (planIdParam && !runCasesParam) {
+      const plan = plans.find((p) => p.id === planIdParam)
+      if (plan) {
+        const scopeCases = getPlanTestCases(plan, requirements, testCases)
+        setTimeout(() => {
+          setSelectedTestPlanId(planIdParam)
+          setSelectedIds(scopeCases.map((tc) => tc.id))
+          const dateStr = new Date().toLocaleDateString()
+          setRunName(`${plan.name} \u2013 ${dateStr}`)
+          setDraftDismissed(true)
+          setMode('setup')
+        }, 0)
+      }
+    }
   }, [location.search])
+
+  // Auto-populate test run cases and name when selected test plan changes in setup dropdown
+  useEffect(() => {
+    if (!selectedTestPlanId) return
+    const plan = plans.find((p) => p.id === selectedTestPlanId)
+    if (!plan) return
+
+    const scopeCases = getPlanTestCases(plan, requirements, testCases)
+    setSelectedIds(scopeCases.map((tc) => tc.id))
+    const dateStr = new Date().toLocaleDateString()
+    setRunName(`${plan.name} \u2013 ${dateStr}`)
+  }, [selectedTestPlanId, plans, requirements, testCases])
 
   useEffect(() => {
     if (activeCaseRef.current) {
@@ -214,6 +247,9 @@ export function TestRunsPage() {
 
   const sortedTestCases = useMemo(
     () => [...testCases].sort((a, b) => {
+      const aSelected = selectedIds.includes(a.id)
+      const bSelected = selectedIds.includes(b.id)
+      if (aSelected !== bSelected) return aSelected ? -1 : 1
       const aKey = a.sourceTcId || ''
       const bKey = b.sourceTcId || ''
       if (aKey && bKey) return aKey.localeCompare(bKey, undefined, { numeric: true })
@@ -221,7 +257,7 @@ export function TestRunsPage() {
       if (bKey) return 1
       return new Date(a.createdAt || 0) - new Date(b.createdAt || 0)
     }),
-    [testCases],
+    [testCases, selectedIds],
   )
 
   const selectedCases = useMemo(
@@ -709,6 +745,7 @@ export function TestRunsPage() {
   return (
     <>
       <PageHeader
+        backTo={`/projects`}
         title="Test runs"
         description="Select test cases, execute them, and save run history for release reporting."
         action={
@@ -812,7 +849,19 @@ export function TestRunsPage() {
                       <td className="mono tc-id">{tc.sourceTcId || tc.id.slice(0, 8).toUpperCase()}</td>
                       <td>{tc.title}</td>
                       <td>{tc.module || '-'}</td>
-                      <td>{tc.priority}</td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <select
+                          className={`inline-select status-select priority-${(tc.priority || 'medium').toLowerCase()}`}
+                          value={tc.priority || 'Medium'}
+                          aria-label={`Priority for ${tc.title}`}
+                          onChange={(e) => updateTestCase(withHistory(
+                            { ...tc, priority: e.target.value, updatedAt: new Date().toISOString(), updatedBy: user },
+                            historyEntry('priority', user, `Priority changed to ${e.target.value}`, tc.priority, e.target.value),
+                          ))}
+                        >
+                          {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                        </select>
+                      </td>
                       <td style={{ textAlign: 'center' }}>
                         <select
                           className={`inline-select status-select status-select--${STATUS_TONE[tc.status] ?? 'pending'}`}
@@ -889,7 +938,17 @@ export function TestRunsPage() {
                     <span className="mono tc-id">{tc.sourceTcId || tc.id.slice(0, 8).toUpperCase()}</span>
                   </label>
                   <div className="mobile-card-header-badges">
-                    <span className={`priority-badge priority-${tc.priority?.toLowerCase()}`}>{tc.priority}</span>
+                    <select
+                      className={`inline-select status-select priority-${(tc.priority || 'medium').toLowerCase()}`}
+                      value={tc.priority || 'Medium'}
+                      aria-label={`Priority for ${tc.title}`}
+                      onChange={(e) => updateTestCase(withHistory(
+                        { ...tc, priority: e.target.value, updatedAt: new Date().toISOString(), updatedBy: user },
+                        historyEntry('priority', user, `Priority changed to ${e.target.value}`, tc.priority, e.target.value),
+                      ))}
+                    >
+                      {PRIORITIES.map((p) => <option key={p} value={p}>{p}</option>)}
+                    </select>
                     <select
                       className={`inline-select status-select status-select--${STATUS_TONE[tc.status] ?? 'neutral'}`}
                       value={tc.status}
@@ -1101,6 +1160,30 @@ export function TestRunsPage() {
             </div>
             <div className="run-side-section">
               <h3>Cases</h3>
+              <div className="run-bulk-actions">
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ flex: 1, fontSize: '12px' }}
+                  onClick={() => {
+                    const patch = Object.fromEntries(selectedCases.map((tc) => [tc.id, { status: 'Pass', actual: results[tc.id]?.actual ?? '' }]))
+                    setResults((prev) => ({ ...prev, ...patch }))
+                  }}
+                >
+                  All Pass
+                </button>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ flex: 1, fontSize: '12px' }}
+                  onClick={() => {
+                    const patch = Object.fromEntries(selectedCases.map((tc) => [tc.id, { status: 'Fail', actual: results[tc.id]?.actual ?? '' }]))
+                    setResults((prev) => ({ ...prev, ...patch }))
+                  }}
+                >
+                  All Fail
+                </button>
+              </div>
               <div className="run-case-list">
                 {selectedCases.map((tc, index) => {
                   const status = results[tc.id]?.status ?? tc.status ?? 'Not Executed'

@@ -53,6 +53,7 @@ export function TestRunDetailPage() {
   return (
     <>
       <PageHeader
+        backTo={`/projects/${projectId}/test-runs`}
         title={run.name || 'Test run details'}
         description={`Executed by ${run.executedBy || 'Unknown'} on ${new Date(run.completedAt || run.date).toLocaleString()}`}
         action={

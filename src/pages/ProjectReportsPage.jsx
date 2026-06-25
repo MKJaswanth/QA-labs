@@ -102,6 +102,7 @@ export function ProjectReportsPage() {
   return (
     <>
       <PageHeader
+        backTo={`/projects`}
         title="Reports"
         description={`Pass rates, bug severity, and run history for ${projectName}.`}
         action={
@@ -250,7 +251,7 @@ export function ProjectReportsPage() {
         ) : (
           <>
             <div className="table-wrap" style={{ borderBottom: 'none', borderRadius: '10px 10px 0 0' }}>
-              <table className="rpt-table">
+              <table className="rpt-table rpt-run-history-table">
                 <thead>
                   <tr>
                     <th>Date</th>
@@ -340,7 +341,7 @@ export function ProjectReportsPage() {
             <StatusPill tone="neutral">{moduleStats.length} module{moduleStats.length !== 1 ? 's' : ''}</StatusPill>
           </div>
           <div className="table-wrap">
-            <table className="rpt-table">
+            <table className="rpt-table rpt-module-table">
               <thead>
                 <tr>
                   <th>Module</th>

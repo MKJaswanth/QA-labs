@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Layout } from './components/Layout'
@@ -11,23 +11,29 @@ import { ToastProvider } from './context/ToastContext'
 import { UserContext } from './context/UserContext'
 import { useCurrentUser } from './hooks/useCurrentUser'
 import { isFirebaseEnabled } from './utils/firebase'
+// AuthPage & LandingPage are eagerly loaded — they render outside the
+// router/Suspense boundary (before the user is authenticated).
 import { AuthPage } from './pages/AuthPage'
 import { LandingPage } from './pages/LandingPage'
-import { BackupPage } from './pages/BackupPage'
-import { BugTrackerPage } from './pages/BugTrackerPage'
-import { DashboardPage } from './pages/DashboardPage'
-import { ProjectReportsPage } from './pages/ProjectReportsPage'
-import { ProjectsPage } from './pages/ProjectsPage'
-import { ReportsPage } from './pages/ReportsPage'
-import { SettingsPage } from './pages/SettingsPage'
-import { TestCaseDetailPage } from './pages/TestCaseDetailPage'
-import { TestCasesPage } from './pages/TestCasesPage'
-import { RequirementsPage } from './pages/RequirementsPage'
-import { TestRunDetailPage } from './pages/TestRunDetailPage'
-import { TestRunsPage } from './pages/TestRunsPage'
-import { TestPlansPage } from './pages/TestPlansPage'
-import { ActivityPage } from './pages/ActivityPage'
-import { WorkspaceSettingsPage } from './pages/WorkspaceSettingsPage'
+// All other pages are lazy-loaded so Vite can code-split them into separate
+// chunks that are fetched only when the user navigates to that route.
+const BackupPage = lazy(() => import('./pages/BackupPage').then(m => ({ default: m.BackupPage })))
+const BugTrackerPage = lazy(() => import('./pages/BugTrackerPage').then(m => ({ default: m.BugTrackerPage })))
+const DashboardPage = lazy(() => import('./pages/DashboardPage').then(m => ({ default: m.DashboardPage })))
+const ProjectReportsPage = lazy(() => import('./pages/ProjectReportsPage').then(m => ({ default: m.ProjectReportsPage })))
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then(m => ({ default: m.ProjectsPage })))
+const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })))
+const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })))
+const TestCaseDetailPage = lazy(() => import('./pages/TestCaseDetailPage').then(m => ({ default: m.TestCaseDetailPage })))
+const TestCasesPage = lazy(() => import('./pages/TestCasesPage').then(m => ({ default: m.TestCasesPage })))
+const RequirementsPage = lazy(() => import('./pages/RequirementsPage').then(m => ({ default: m.RequirementsPage })))
+const RequirementCoverageMatrixPage = lazy(() => import('./pages/RequirementCoverageMatrixPage').then(m => ({ default: m.RequirementCoverageMatrixPage })))
+const TestRunDetailPage = lazy(() => import('./pages/TestRunDetailPage').then(m => ({ default: m.TestRunDetailPage })))
+const TestRunsPage = lazy(() => import('./pages/TestRunsPage').then(m => ({ default: m.TestRunsPage })))
+const TestPlansPage = lazy(() => import('./pages/TestPlansPage').then(m => ({ default: m.TestPlansPage })))
+const ActivityPage = lazy(() => import('./pages/ActivityPage').then(m => ({ default: m.ActivityPage })))
+const WorkspaceSettingsPage = lazy(() => import('./pages/WorkspaceSettingsPage').then(m => ({ default: m.WorkspaceSettingsPage })))
+const JoinPage = lazy(() => import('./pages/JoinPage').then(m => ({ default: m.JoinPage })))
 import './App.css'
 
 function NamePicker({ onDone }) {
@@ -69,26 +75,36 @@ function NamePicker({ onDone }) {
 }
 
 const appRoutes = (
-  <Routes>
-    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-    <Route path="/dashboard" element={<DashboardPage />} />
-    <Route path="/projects" element={<ProjectsPage />} />
-    <Route path="/reports" element={<ReportsPage />} />
-    <Route path="/activity" element={<ActivityPage />} />
-    <Route path="/backup" element={<BackupPage />} />
-    <Route path="/projects/:projectId/test-cases" element={<TestCasesPage />} />
-    <Route path="/projects/:projectId/test-cases/:testCaseId" element={<TestCaseDetailPage />} />
-    <Route path="/projects/:projectId/requirements" element={<RequirementsPage />} />
-    <Route path="/projects/:projectId/requirements/:requirementId" element={<RequirementsPage />} />
-    <Route path="/projects/:projectId/test-runs" element={<TestRunsPage />} />
-    <Route path="/projects/:projectId/test-runs/:runId" element={<TestRunDetailPage />} />
-    <Route path="/projects/:projectId/test-plans" element={<TestPlansPage />} />
-    <Route path="/projects/:projectId/bugs" element={<BugTrackerPage />} />
-    <Route path="/projects/:projectId/reports" element={<ProjectReportsPage />} />
-    <Route path="/projects/:projectId/settings" element={<SettingsPage />} />
-    <Route path="/workspace/settings" element={<WorkspaceSettingsPage />} />
-    <Route path="*" element={<Navigate to="/dashboard" replace />} />
-  </Routes>
+  <Suspense fallback={
+    <div className="app-loading">
+      <div className="app-loading-card" role="status" aria-live="polite">
+        <div className="app-loading-spinner" aria-label="Loading" />
+      </div>
+    </div>
+  }>
+    <Routes>
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/dashboard" element={<DashboardPage />} />
+      <Route path="/projects" element={<ProjectsPage />} />
+      <Route path="/reports" element={<ReportsPage />} />
+      <Route path="/activity" element={<ActivityPage />} />
+      <Route path="/backup" element={<BackupPage />} />
+      <Route path="/projects/:projectId/test-cases" element={<TestCasesPage />} />
+      <Route path="/projects/:projectId/test-cases/:testCaseId" element={<TestCaseDetailPage />} />
+      <Route path="/projects/:projectId/requirements" element={<RequirementsPage />} />
+      <Route path="/projects/:projectId/requirements/:requirementId" element={<RequirementsPage />} />
+      <Route path="/projects/:projectId/coverage-matrix" element={<RequirementCoverageMatrixPage />} />
+      <Route path="/projects/:projectId/test-runs" element={<TestRunsPage />} />
+      <Route path="/projects/:projectId/test-runs/:runId" element={<TestRunDetailPage />} />
+      <Route path="/projects/:projectId/test-plans" element={<TestPlansPage />} />
+      <Route path="/projects/:projectId/bugs" element={<BugTrackerPage />} />
+      <Route path="/projects/:projectId/reports" element={<ProjectReportsPage />} />
+      <Route path="/projects/:projectId/settings" element={<SettingsPage />} />
+      <Route path="/workspace/settings" element={<WorkspaceSettingsPage />} />
+      <Route path="/join/:token" element={<JoinPage />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  </Suspense>
 )
 
 function AppShell() {

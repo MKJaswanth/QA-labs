@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSwipeBack } from '../hooks/useSwipeBack'
+import { ScrollToTopButton } from './ScrollToTopButton'
 import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/useAuth'
 import { useUser } from '../context/UserContext'
@@ -26,6 +28,7 @@ const globalNav = [
 const projectNav = [
   { label: 'Test cases', path: 'test-cases', icon: 'cases' },
   { label: 'Requirements', path: 'requirements', icon: 'requirements' },
+  { label: 'Coverage Matrix', path: 'coverage-matrix', icon: 'matrix' },
   { label: 'Test runs', path: 'test-runs', icon: 'runs' },
   { label: 'Test plans', path: 'test-plans', icon: 'plans' },
   { label: 'Bug tracker', path: 'bugs', icon: 'bug' },
@@ -47,6 +50,7 @@ function Icon({ name }) {
     plans: <><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6" /><path d="M9 16h6" /></>,
     bug: <><path d="M8 8a4 4 0 0 1 8 0v8a4 4 0 0 1-8 0Z" /><path d="M3 13h5" /><path d="M16 13h5" /><path d="M4 20l4-3" /><path d="m16 17 4 3" /><path d="M9 4 7 2" /><path d="m15 4 2-2" /></>,
     settings: <><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z" /><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1-2 3.4-.2-.1a1.7 1.7 0 0 0-1.9.3 1.7 1.7 0 0 0-.8 1.6V22H9.1v-.2a1.7 1.7 0 0 0-.8-1.6 1.7 1.7 0 0 0-1.9-.3l-.2.1-2-3.4.1-.1A1.7 1.7 0 0 0 4.6 15 1.7 1.7 0 0 0 3 14H3v-4h.1a1.7 1.7 0 0 0 1.5-1 1.7 1.7 0 0 0-.3-1.9l-.1-.1 2-3.4.2.1a1.7 1.7 0 0 0 1.9-.3A1.7 1.7 0 0 0 9.1 2V2h5.8v.2a1.7 1.7 0 0 0 .8 1.6 1.7 1.7 0 0 0 1.9.3l.2-.1 2 3.4-.1.1a1.7 1.7 0 0 0-.3 1.9 1.7 1.7 0 0 0 1.5 1h.1v4h-.1a1.7 1.7 0 0 0-1.5 1Z" /></>,
+    matrix: <><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></>,
   }
   return <svg {...common}>{paths[name]}</svg>
 }
@@ -460,11 +464,14 @@ export function Layout({ children }) {
   const { pathname } = useLocation()
   const match = pathname.match(/^\/projects\/([^/]+)/)
   const projectId = match?.[1]
+  const shellRef = useRef(null)
+  useSwipeBack(shellRef)
 
   return (
     <>
     <ScrollToTop />
-    <div className="app-shell">
+    <ScrollToTopButton />
+    <div className="app-shell" ref={shellRef}>
       <StorageWarningBanner />
       <header className="topbar">
         <NavLink to="/dashboard" className="brand" aria-label="QA Lab dashboard">

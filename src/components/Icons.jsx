@@ -203,3 +203,7 @@ export const EyeOffIcon = icon(
     <line x1="2" y1="2" x2="22" y2="22" />
   </>
 )
+
+export const PlayIcon = icon(
+  <polygon points="5 3 19 12 5 21 5 3" />
+)

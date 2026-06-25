@@ -8,6 +8,9 @@ import { useProjects } from '../hooks/useProjects'
 import { useTeamMembers } from '../hooks/useTeamMembers'
 import { useActivity } from '../hooks/useActivity'
 import { useUserRole } from '../hooks/useUserRole'
+import { getJiraSettings, saveJiraSettings } from '../utils/storage'
+import { isFirebaseEnabled } from '../utils/firebase'
+import { getOrCreateProjectInviteToken, revokeProjectInviteToken } from '../utils/remoteStorage'
 
 export function SettingsPage() {
   const { projectId } = useParams()
@@ -24,6 +27,36 @@ export function SettingsPage() {
   const [description, setDescription] = useState(project?.description ?? '')
   const [newMemberName, setNewMemberName] = useState('')
   const [saved, setSaved] = useState(false)
+
+  // Jira integration settings
+  const [jiraSettings, setJiraSettings] = useState(() => getJiraSettings())
+  const [jiraSaved, setJiraSaved] = useState(false)
+  const [inviteLink, setInviteLink] = useState('')
+  const [inviteLoading, setInviteLoading] = useState(false)
+
+  const handleGenerateInvite = async () => {
+    if (!isFirebaseEnabled) { toast.error('Invite links require Firebase.'); return }
+    setInviteLoading(true)
+    try {
+      const token = await getOrCreateProjectInviteToken(projectId)
+      const link = `${window.location.origin}${window.location.pathname}#/join/${token}`
+      setInviteLink(link)
+      await navigator.clipboard.writeText(link)
+      toast.success('Invite link copied to clipboard!')
+    } catch {
+      toast.error('Failed to generate invite link.')
+    } finally {
+      setInviteLoading(false)
+    }
+  }
+
+  const handleRevokeInvite = async () => {
+    const ok = await confirm({ title: 'Revoke invite link?', message: 'The current invite link will stop working. You can generate a new one anytime.', confirmLabel: 'Revoke', danger: true })
+    if (!ok) return
+    await revokeProjectInviteToken(projectId)
+    setInviteLink('')
+    toast.success('Invite link revoked.')
+  }
 
   const projectActivities = getActivitiesByProject(projectId).slice(0, 10)
 
@@ -46,6 +79,18 @@ export function SettingsPage() {
     setSaved(true)
     toast.success('Project settings saved')
     setTimeout(() => setSaved(false), 2000)
+  }
+
+  const handleJiraSave = (e) => {
+    e.preventDefault()
+    const trimmedDomain = jiraSettings.domain.trim().replace(/\/+$/, '') // strip trailing slash
+    const trimmedKey = jiraSettings.projectKey.trim().toUpperCase()
+    const cleaned = { domain: trimmedDomain, projectKey: trimmedKey }
+    saveJiraSettings(cleaned)
+    setJiraSettings(cleaned)
+    setJiraSaved(true)
+    toast.success('Jira settings saved')
+    setTimeout(() => setJiraSaved(false), 2000)
   }
 
   const addExistingMember = (memberId) =>
@@ -80,7 +125,7 @@ export function SettingsPage() {
 
   return (
     <>
-      <PageHeader title="Settings" description={`Configure ${project.name}`} />
+      <PageHeader backTo={`/projects`} title="Settings" description={`Configure ${project.name}`} />
 
       <section className="panel settings-section">
         <div className="section-header"><h2>Project details</h2></div>
@@ -193,6 +238,91 @@ export function SettingsPage() {
               </div>
             )}
           </div>
+        </div>
+      </section>
+
+      {isLead && (
+        <section className="panel settings-section">
+          <div className="section-header"><h2>Invite to project</h2></div>
+          <div className="settings-body">
+            <p className="text-muted" style={{ fontSize: '13px', marginTop: 0, marginBottom: '12px' }}>
+              Share this link to invite teammates directly into <strong>{project.name}</strong>. They'll be added as Viewer and can only access this project.
+            </p>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+              {inviteLink && (
+                <input
+                  readOnly
+                  value={inviteLink}
+                  className="input-disabled"
+                  style={{ flex: '1 1 300px', fontSize: '12px', fontFamily: 'monospace' }}
+                  onClick={(e) => e.target.select()}
+                />
+              )}
+              <button type="button" className="primary-button" disabled={inviteLoading} onClick={handleGenerateInvite}>
+                {inviteLoading ? 'Generating…' : inviteLink ? 'Copy link' : 'Generate invite link'}
+              </button>
+              {inviteLink && (
+                <button type="button" className="danger-button" onClick={handleRevokeInvite}>Revoke</button>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      <section className="panel settings-section">
+        <div className="section-header">
+          <h2>🔗 Jira Integration</h2>
+        </div>
+        <div className="settings-body jira-settings-body">
+          <p className="jira-settings-desc">
+            Enter your Jira domain and project key once. A <strong>"Push to Jira"</strong> button will appear on every bug so your team can send bugs to Jira with one click — no copy-pasting.
+          </p>
+          <form className="settings-form" onSubmit={handleJiraSave}>
+            <label>
+              Jira Domain
+              <input
+                value={jiraSettings.domain}
+                onChange={(e) => setJiraSettings((s) => ({ ...s, domain: e.target.value }))}
+                placeholder="e.g. mycompany.atlassian.net"
+              />
+              <span className="jira-field-hint">Do not include https:// — just the domain.</span>
+            </label>
+            <label>
+              Project Key
+              <input
+                value={jiraSettings.projectKey}
+                onChange={(e) => setJiraSettings((s) => ({ ...s, projectKey: e.target.value }))}
+                placeholder="e.g. PROJ"
+                style={{ textTransform: 'uppercase' }}
+              />
+              <span className="jira-field-hint">The short code in your Jira issue IDs (e.g. PROJ in PROJ-123).</span>
+            </label>
+            <div className="settings-form-footer">
+              <button type="submit" className="primary-button" disabled={!jiraSettings.domain.trim() || !jiraSettings.projectKey.trim()}>
+                {jiraSaved ? <><CheckIcon width={14} height={14} /> Saved</> : 'Save Jira settings'}
+              </button>
+              {jiraSettings.domain && jiraSettings.projectKey && (
+                <button
+                  type="button"
+                  className="ghost-button jira-disconnect-btn"
+                  onClick={() => {
+                    const cleared = { domain: '', projectKey: '' }
+                    saveJiraSettings(cleared)
+                    setJiraSettings(cleared)
+                    toast.success('Jira integration disconnected')
+                  }}
+                >
+                  Disconnect
+                </button>
+              )}
+            </div>
+            {jiraSettings.domain && jiraSettings.projectKey && (
+              <span className="jira-active-badge">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                Jira integration active
+              </span>
+            )}
+          </form>
         </div>
       </section>
 

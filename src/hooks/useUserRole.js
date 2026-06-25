@@ -7,9 +7,6 @@ export function useUserRole() {
   const { user } = useUser()
   const { members } = useTeamMembers()
 
-  const email = auth?.currentUser?.email || ''
-  const isAdminEmail = email.toLowerCase() === 'jaswanth@gmail.com'
-
   const currentMember = members.find((m) => {
     if (auth?.currentUser?.uid && m.uid === auth.currentUser.uid) return true
     return m.name.toLowerCase() === (user || '').toLowerCase()
@@ -24,14 +21,14 @@ export function useUserRole() {
   const userIsDeleted = rawRecord ? isDeleted(rawRecord) : false
 
   let role
-  if (isAdminEmail) {
-    role = 'QA Lead'
-  } else if (userIsDeleted) {
+  if (userIsDeleted) {
     role = 'None'
   } else if (currentMember) {
-    role = currentMember.role || 'Viewer'
+    // If this user is the only member in the workspace, always grant QA Lead
+    // to prevent permanent lockout from role changes.
+    role = members.length === 1 ? 'QA Lead' : (currentMember.role || 'Viewer')
   } else {
-    // Prevent lockout of first/unassigned workspace users
+    // No member record yet — first user or unsynced; grant QA Lead
     role = members.length === 0 ? 'QA Lead' : 'Viewer'
   }
 
@@ -40,7 +37,7 @@ export function useUserRole() {
     isLead: role === 'QA Lead',
     isTester: role === 'Tester',
     isViewer: role === 'Viewer',
-    isDeleted: userIsDeleted && !isAdminEmail, // admins can never be deleted
+    isDeleted: userIsDeleted,
   }
 }
 

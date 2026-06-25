@@ -32,6 +32,18 @@ export const runsKey        = (projectId) => `${cachePrefix()}runs_${projectId}`
 export const teamMembersKey = () => `${cachePrefix()}team_members`
 export const runDraftKey    = (projectId) => `${cachePrefix()}rundraft_${projectId}`
 
+// ---------------------------------------------------------------------------
+// Jira integration settings — stored globally (not workspace-scoped) so the
+// same Jira domain/project key is shared across workspace sessions.
+// ---------------------------------------------------------------------------
+const JIRA_SETTINGS_KEY = 'qa_jira_settings'
+export function getJiraSettings() {
+  return get(JIRA_SETTINGS_KEY) ?? { domain: '', projectKey: '' }
+}
+export function saveJiraSettings(settings) {
+  set(JIRA_SETTINGS_KEY, settings)
+}
+
 // One-time migration of the old generic keys (qa_projects, qa_testcases_{id}, …)
 // to the workspace-namespaced keys. Copies a value across only if the new key
 // is empty (never clobbers fresher data), then removes the legacy key. Safe to

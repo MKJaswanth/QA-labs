@@ -4,15 +4,61 @@ function isRunComplete(run) {
   return Boolean(run?.completedAt)
 }
 
-export function getPlanMetrics(plan, runs = []) {
+/**
+ * Compute the deduplicated set of test cases that fall within a plan's scope.
+ * Scope is derived by traversing: Plan → requirementIds → requirement.testCaseIds.
+ */
+export function getPlanTestCases(plan, requirements = [], testCases = []) {
+  const reqIds = new Set(plan?.requirementIds || [])
+  const linkedReqs = requirements.filter((r) => reqIds.has(r.id))
+  const tcIdSet = new Set()
+  linkedReqs.forEach((r) => (r.testCaseIds || []).forEach((id) => tcIdSet.add(id)))
+  return testCases.filter((tc) => tcIdSet.has(tc.id))
+}
+
+export function getPlanMetrics(plan, runs = [], requirements = [], testCases = []) {
   const linkedRuns = runs.filter((r) => r.testPlanId === plan?.id)
   const completedRuns = linkedRuns.filter(isRunComplete)
-  const totalCases = linkedRuns.reduce((s, r) => s + (r.total ?? 0), 0)
-  const passedCases = linkedRuns.reduce((s, r) => s + (r.passed ?? 0), 0)
-  const passRate = totalCases ? Math.round((passedCases / totalCases) * 100) : 0
-  const progressPct = linkedRuns.length
-    ? Math.round((completedRuns.length / linkedRuns.length) * 100)
-    : 0
+
+  // Run-level aggregates (kept for backward compat and display)
+  const runTotalCases = linkedRuns.reduce((s, r) => s + (r.total ?? 0), 0)
+  const runPassedCases = linkedRuns.reduce((s, r) => s + (r.passed ?? 0), 0)
+
+  // Scope-based metrics — derived from Plan → Requirements → Test Cases
+  const scopeCases = getPlanTestCases(plan, requirements, testCases)
+  const scopeTotal = scopeCases.length
+
+  // Build a map of the latest status for each in-scope case from linked runs
+  const latestStatus = {}
+  // Process runs oldest-first so newer runs overwrite older statuses
+  const chronoRuns = [...linkedRuns].sort(
+    (a, b) => new Date(a.completedAt || a.startedAt || 0) - new Date(b.completedAt || b.startedAt || 0),
+  )
+  chronoRuns.forEach((run) => {
+    ;(run.cases || []).forEach((rc) => {
+      if (rc.testCaseId) latestStatus[rc.testCaseId] = rc.status
+    })
+  })
+
+  const scopeExecuted = scopeCases.filter(
+    (tc) => latestStatus[tc.id] && latestStatus[tc.id] !== 'Not Executed',
+  ).length
+  const scopePassed = scopeCases.filter((tc) => latestStatus[tc.id] === 'Pass').length
+
+  // Progress: % of in-scope cases that have been executed
+  // Falls back to run-completion % when scope info isn't available
+  const progressPct = scopeTotal > 0
+    ? Math.round((scopeExecuted / scopeTotal) * 100)
+    : linkedRuns.length
+      ? Math.round((completedRuns.length / linkedRuns.length) * 100)
+      : 0
+
+  // Pass rate: % of in-scope cases that passed
+  const passRate = scopeTotal > 0
+    ? Math.round((scopePassed / scopeTotal) * 100)
+    : runTotalCases
+      ? Math.round((runPassedCases / runTotalCases) * 100)
+      : 0
 
   return {
     linkedRuns,
@@ -20,12 +66,17 @@ export function getPlanMetrics(plan, runs = []) {
     completedRuns: completedRuns.length,
     progressPct,
     passRate,
-    totalCases,
-    passedCases,
+    // Scope-based counts
+    scopeTotal,
+    scopeExecuted,
+    scopePassed,
+    // Legacy run-level counts (kept for backward compat)
+    totalCases: scopeTotal || runTotalCases,
+    passedCases: scopePassed || runPassedCases,
   }
 }
 
-export function getMilestoneMetrics(milestone, plans = [], runs = []) {
+export function getMilestoneMetrics(milestone, plans = [], runs = [], requirements = [], testCases = []) {
   const planIds = new Set([
     ...(milestone?.testPlanIds ?? []),
     ...plans.filter((p) => p.milestoneId === milestone?.id).map((p) => p.id),
@@ -34,12 +85,46 @@ export function getMilestoneMetrics(milestone, plans = [], runs = []) {
   const linkedPlanIds = new Set(linkedPlans.map((p) => p.id))
   const linkedRuns = runs.filter((r) => r.testPlanId && linkedPlanIds.has(r.testPlanId))
   const completedRuns = linkedRuns.filter(isRunComplete)
-  const totalCases = linkedRuns.reduce((s, r) => s + (r.total ?? 0), 0)
-  const passedCases = linkedRuns.reduce((s, r) => s + (r.passed ?? 0), 0)
-  const passRate = totalCases ? Math.round((passedCases / totalCases) * 100) : 0
-  const progressPct = linkedRuns.length
-    ? Math.round((completedRuns.length / linkedRuns.length) * 100)
-    : 0
+
+  // Aggregate scope across all linked plans
+  const allScopeCaseIds = new Set()
+  linkedPlans.forEach((plan) => {
+    const cases = getPlanTestCases(plan, requirements, testCases)
+    cases.forEach((tc) => allScopeCaseIds.add(tc.id))
+  })
+  const scopeTotal = allScopeCaseIds.size
+
+  // Latest status per case from all milestone-linked runs
+  const latestStatus = {}
+  const chronoRuns = [...linkedRuns].sort(
+    (a, b) => new Date(a.completedAt || a.startedAt || 0) - new Date(b.completedAt || b.startedAt || 0),
+  )
+  chronoRuns.forEach((run) => {
+    ;(run.cases || []).forEach((rc) => {
+      if (rc.testCaseId && allScopeCaseIds.has(rc.testCaseId)) {
+        latestStatus[rc.testCaseId] = rc.status
+      }
+    })
+  })
+
+  const scopeExecuted = Object.values(latestStatus).filter((s) => s && s !== 'Not Executed').length
+  const scopePassed = Object.values(latestStatus).filter((s) => s === 'Pass').length
+
+  // Fallback run-level aggregates
+  const runTotalCases = linkedRuns.reduce((s, r) => s + (r.total ?? 0), 0)
+  const runPassedCases = linkedRuns.reduce((s, r) => s + (r.passed ?? 0), 0)
+
+  const progressPct = scopeTotal > 0
+    ? Math.round((scopeExecuted / scopeTotal) * 100)
+    : linkedRuns.length
+      ? Math.round((completedRuns.length / linkedRuns.length) * 100)
+      : 0
+
+  const passRate = scopeTotal > 0
+    ? Math.round((scopePassed / scopeTotal) * 100)
+    : runTotalCases
+      ? Math.round((runPassedCases / runTotalCases) * 100)
+      : 0
 
   let daysLeft = null
   let onTrack = true
@@ -64,8 +149,11 @@ export function getMilestoneMetrics(milestone, plans = [], runs = []) {
     completedRuns: completedRuns.length,
     progressPct,
     passRate,
-    totalCases,
-    passedCases,
+    scopeTotal,
+    scopeExecuted,
+    scopePassed,
+    totalCases: scopeTotal || runTotalCases,
+    passedCases: scopePassed || runPassedCases,
     daysLeft,
     onTrack,
     overdue: daysLeft !== null && daysLeft < 0 && milestone?.status !== 'Completed',

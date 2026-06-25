@@ -8,10 +8,12 @@ import { useMilestones } from '../hooks/useMilestones'
 import { useTestRuns } from '../hooks/useTestRuns'
 import { useBugs } from '../hooks/useBugs'
 import { useRequirements } from '../hooks/useRequirements'
+import { useTestCases } from '../hooks/useTestCases'
 import { useConfirm } from '../context/useConfirm'
 import { useToast } from '../context/useToast'
-import { PencilIcon, XIcon } from '../components/Icons'
-import { getPlanMetrics, getMilestoneMetrics } from '../utils/planMetrics'
+import { PencilIcon, XIcon, PlayIcon, CheckIcon } from '../components/Icons'
+import { getPlanMetrics, getMilestoneMetrics, getPlanTestCases } from '../utils/planMetrics'
+import { normalizeTestStatus, TEST_STATUSES, STATUS_TONE } from '../utils/status'
 
 const PLAN_STATUSES = ['Open', 'Completed']
 const MILESTONE_STATUSES = ['Open', 'Completed']
@@ -26,10 +28,11 @@ export function TestPlansPage() {
   const { runs } = useTestRuns(projectId)
   const { bugs } = useBugs(projectId)
   const { requirements } = useRequirements(projectId)
+  const { testCases } = useTestCases(projectId)
   const confirm = useConfirm()
   const toast = useToast()
 
-  const [tab, setTab] = useState('plans')
+  const [tab, setTab] = useState('milestones')
   const [selectedPlanId, setSelectedPlanId] = useState(null)
   const [selectedMilestoneId, setSelectedMilestoneId] = useState(null)
   const [showPlanForm, setShowPlanForm] = useState(false)
@@ -38,12 +41,25 @@ export function TestPlansPage() {
   const [editingMilestone, setEditingMilestone] = useState(null)
   const [planForm, setPlanForm] = useState(blankPlan())
   const [milestoneForm, setMilestoneForm] = useState(blankMilestone())
+  const [planSearch, setPlanSearch] = useState('')
+  const [planStatusFilter, setPlanStatusFilter] = useState('')
+  const [milestoneSearch, setMilestoneSearch] = useState('')
+  const [milestoneStatusFilter, setMilestoneStatusFilter] = useState('')
 
   const planRows = useMemo(() =>
     [...plans]
       .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-      .map((plan) => ({ plan, metrics: getPlanMetrics(plan, runs) })),
-  [plans, runs])
+      .filter((plan) => {
+        if (planStatusFilter && plan.status !== planStatusFilter) return false
+        if (planSearch) {
+          const q = planSearch.toLowerCase()
+          const milestone = milestones.find((m) => m.id === plan.milestoneId)
+          return plan.name.toLowerCase().includes(q) || milestone?.name.toLowerCase().includes(q)
+        }
+        return true
+      })
+      .map((plan) => ({ plan, metrics: getPlanMetrics(plan, runs, requirements, testCases) })),
+  [plans, runs, requirements, testCases, planSearch, planStatusFilter, milestones])
 
   const milestoneRows = useMemo(() =>
     [...milestones]
@@ -52,8 +68,28 @@ export function TestPlansPage() {
         const bDue = b.dueDate || '9999'
         return aDue.localeCompare(bDue)
       })
-      .map((milestone) => ({ milestone, metrics: getMilestoneMetrics(milestone, plans, runs) })),
-  [milestones, plans, runs])
+      .filter((ms) => {
+        if (milestoneStatusFilter && ms.status !== milestoneStatusFilter) return false
+        if (milestoneSearch) {
+          const q = milestoneSearch.toLowerCase()
+          return ms.name.toLowerCase().includes(q) || ms.description?.toLowerCase().includes(q)
+        }
+        return true
+      })
+      .map((milestone) => ({ milestone, metrics: getMilestoneMetrics(milestone, plans, runs, requirements, testCases) })),
+  [milestones, plans, runs, requirements, testCases, milestoneSearch, milestoneStatusFilter])
+
+  // Aggregate summary stats
+  const summaryStats = useMemo(() => {
+    const activePlans = plans.filter(p => p.status !== 'Completed').length
+    const completedPlans = plans.filter(p => p.status === 'Completed').length
+    const activeMilestones = milestones.filter(m => m.status !== 'Completed').length
+    const completedMilestones = milestones.filter(m => m.status === 'Completed').length
+    const totalCases = planRows.reduce((sum, { metrics }) => sum + metrics.scopeTotal, 0)
+    const totalPassed = planRows.reduce((sum, { metrics }) => sum + metrics.scopePassed, 0)
+    const overallPassRate = totalCases > 0 ? Math.round((totalPassed / totalCases) * 100) : 0
+    return { activePlans, completedPlans, activeMilestones, completedMilestones, totalCases, totalPassed, overallPassRate }
+  }, [plans, milestones, planRows])
 
   const setPlan = (k) => (e) => setPlanForm((f) => ({ ...f, [k]: e.target.value }))
   const setMilestone = (k) => (e) => setMilestoneForm((f) => ({ ...f, [k]: e.target.value }))
@@ -145,30 +181,64 @@ export function TestPlansPage() {
     if (ok) { removeMilestone(milestone.id); toast.success('Milestone deleted') }
   }
 
+  const togglePlanStatus = (plan) => {
+    const newStatus = plan.status === 'Completed' ? 'Open' : 'Completed'
+    const now = new Date().toISOString()
+    updatePlan({
+      ...plan,
+      status: newStatus,
+      completedAt: newStatus === 'Completed' ? now : '',
+    })
+    toast.success(newStatus === 'Completed' ? 'Plan marked complete' : 'Plan reopened')
+  }
+
+  const toggleMilestoneStatus = (milestone) => {
+    const newStatus = milestone.status === 'Completed' ? 'Open' : 'Completed'
+    const now = new Date().toISOString()
+    updateMilestone({
+      ...milestone,
+      status: newStatus,
+      completedAt: newStatus === 'Completed' ? now : '',
+    })
+    toast.success(newStatus === 'Completed' ? 'Milestone marked complete' : 'Milestone reopened')
+  }
+
   if (selectedPlanId) {
     const planObj = plans.find(p => p.id === selectedPlanId)
     if (!planObj) {
       setSelectedPlanId(null)
       return null
     }
-    const metrics = getPlanMetrics(planObj, runs)
+    const metrics = getPlanMetrics(planObj, runs, requirements, testCases)
     const planBugs = bugs.filter(b => metrics.linkedRuns.some(r => r.linkedBugIds?.includes(b.id)))
     const planReqs = requirements.filter((r) => (planObj.requirementIds || []).includes(r.id))
+    const scopeCases = getPlanTestCases(planObj, requirements, testCases)
 
     return (
-      <>
+      <div className="page-entrance">
         <PageHeader
           title={`Test Plan: ${planObj.name}`}
           description="Test plan execution progress, associated runs, and logged bugs."
           action={
             <div className="page-actions-row">
               <button className="secondary-button" type="button" onClick={() => setSelectedPlanId(null)}>Back to list</button>
-              <button className="primary-button" type="button" onClick={() => openEditPlan(planObj)}>Edit plan</button>
+              <button className="secondary-button" type="button" onClick={() => openEditPlan(planObj)}>Edit plan</button>
+              {scopeCases.length > 0 && (
+                <Link
+                  to={`/projects/${projectId}/test-runs?planId=${planObj.id}`}
+                  className="primary-button start-run-btn"
+                  style={{ textDecoration: 'none' }}
+                >
+                  <span>Start a run ({scopeCases.length} cases)</span>
+                  <span className="btn-icon-circle">▶</span>
+                </Link>
+              )}
             </div>
           }
         />
 
-        <section className="panel req-detail-page">
+        <div className="double-bezel-outer">
+          <section className="panel req-detail-page double-bezel-inner" style={{ marginBottom: 0 }}>
           <div className="req-detail-header">
             <div>
               <span className="mono tc-id">TEST PLAN</span>
@@ -179,10 +249,10 @@ export function TestPlansPage() {
           </div>
 
           <div className="req-detail-meta">
-            <div><span>Total runs</span><strong>{metrics.totalRuns}</strong></div>
-            <div><span>Completed</span><strong>{metrics.completedRuns}</strong></div>
-            <div><span>Total cases</span><strong>{metrics.totalCases}</strong></div>
-            <div><span>Passed cases</span><strong>{metrics.passedCases}</strong></div>
+            <div><span>Scope</span><strong>{metrics.scopeTotal} cases</strong></div>
+            <div><span>Executed</span><strong>{metrics.scopeExecuted}</strong></div>
+            <div><span>Passed</span><strong>{metrics.scopePassed}</strong></div>
+            <div><span>Runs</span><strong>{metrics.totalRuns}</strong></div>
             <div><span>Pass rate</span><strong>{metrics.passRate}%</strong></div>
           </div>
 
@@ -190,7 +260,7 @@ export function TestPlansPage() {
             <div className="req-progress-track">
               <span className="req-progress-fill" style={{ width: `${metrics.progressPct}%` }} />
             </div>
-            <span className="req-progress-pct">{metrics.progressPct}% Run Completion</span>
+            <span className="req-progress-pct">{metrics.progressPct}% Scope Coverage</span>
           </div>
 
           <div className="section-header req-detail-section-head">
@@ -230,13 +300,51 @@ export function TestPlansPage() {
           )}
 
           <div className="section-header req-detail-section-head" style={{ marginTop: 24 }}>
+            <h2>Test cases in scope</h2>
+            <StatusPill tone="neutral">{scopeCases.length}</StatusPill>
+          </div>
+
+          {scopeCases.length === 0 ? (
+            <div className="req-detail-empty">
+              <p>No test cases in scope. Link requirements with test cases to define this plan's scope.</p>
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table className="rpt-table">
+                <thead>
+                  <tr>
+                    <th>TC ID</th>
+                    <th>Title</th>
+                    <th>Module</th>
+                    <th>Priority</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {scopeCases.map((tc) => (
+                    <tr key={tc.id}>
+                      <td className="mono tc-id">{tc.sourceTcId || tc.id.slice(0, 8).toUpperCase()}</td>
+                      <td><Link className="text-link" to={`/projects/${projectId}/test-cases/${tc.id}`}>{tc.title}</Link></td>
+                      <td>{tc.module || '—'}</td>
+                      <td>{tc.priority || '—'}</td>
+                      <td>
+                        <StatusPill tone={STATUS_TONE[tc.status] ?? 'pending'}>{normalizeTestStatus(tc.status)}</StatusPill>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          <div className="section-header req-detail-section-head" style={{ marginTop: 24 }}>
             <h2>Associated test runs</h2>
             <StatusPill tone="neutral">{metrics.totalRuns}</StatusPill>
           </div>
 
           {metrics.linkedRuns.length === 0 ? (
             <div className="req-detail-empty">
-              <p>No test runs are linked to this plan yet. Edit the plan to associate runs.</p>
+              <p>No test runs are linked to this plan yet. Start a run from this plan to begin testing.</p>
             </div>
           ) : (
             <div className="table-wrap">
@@ -317,6 +425,7 @@ export function TestPlansPage() {
             </div>
           )}
         </section>
+      </div>
 
         {showPlanForm && (
           <Modal title={editingPlan ? 'Edit test plan' : 'New test plan'} onClose={() => setShowPlanForm(false)} style={{ maxWidth: 560 }}>
@@ -336,13 +445,15 @@ export function TestPlansPage() {
                     {PLAN_STATUSES.map((s) => <option key={s}>{s}</option>)}
                   </select>
                 </label>
-                <label>
-                  Milestone
-                  <select value={planForm.milestoneId} onChange={setPlan('milestoneId')}>
-                    <option value="">None</option>
-                    {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                  </select>
-                </label>
+                {milestones.length > 0 && (
+                  <label>
+                    Milestone
+                    <select value={planForm.milestoneId} onChange={setPlan('milestoneId')}>
+                      <option value="">None</option>
+                      {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  </label>
+                )}
               </div>
               <div>
                 <label>Linked requirements <span className="hint">({(planForm.requirementIds || []).length} selected)</span></label>
@@ -376,7 +487,7 @@ export function TestPlansPage() {
             </form>
           </Modal>
         )}
-      </>
+      </div>
     )
   }
 
@@ -386,10 +497,10 @@ export function TestPlansPage() {
       setSelectedMilestoneId(null)
       return null
     }
-    const metrics = getMilestoneMetrics(milestoneObj, plans, runs)
+    const metrics = getMilestoneMetrics(milestoneObj, plans, runs, requirements, testCases)
 
     return (
-      <>
+      <div className="page-entrance">
         <PageHeader
           title={`Milestone: ${milestoneObj.name}`}
           description="Milestone status, linked test plans, and release readiness tracker."
@@ -401,7 +512,8 @@ export function TestPlansPage() {
           }
         />
 
-        <section className="panel req-detail-page">
+        <div className="double-bezel-outer">
+          <section className="panel req-detail-page double-bezel-inner" style={{ marginBottom: 0 }}>
           <div className="req-detail-header">
             <div>
               <span className="mono tc-id">MILESTONE</span>
@@ -432,7 +544,7 @@ export function TestPlansPage() {
             <div className="req-progress-track">
               <span className="req-progress-fill" style={{ width: `${metrics.progressPct}%` }} />
             </div>
-            <span className="req-progress-pct">{metrics.progressPct}% Run Completion</span>
+            <span className="req-progress-pct">{metrics.progressPct}% Scope Coverage</span>
           </div>
 
           <div className="section-header req-detail-section-head">
@@ -459,7 +571,7 @@ export function TestPlansPage() {
                 </thead>
                 <tbody>
                   {metrics.linkedPlans.map((plan) => {
-                    const planMetrics = getPlanMetrics(plan, runs)
+                    const planMetrics = getPlanMetrics(plan, runs, requirements, testCases)
                     return (
                       <tr key={plan.id}>
                         <td className="mono tc-id">{plan.id.slice(0, 8).toUpperCase()}</td>
@@ -491,6 +603,7 @@ export function TestPlansPage() {
             </div>
           )}
         </section>
+      </div>
 
         {showMilestoneForm && (
           <Modal title={editingMilestone ? 'Edit milestone' : 'New milestone'} onClose={() => setShowMilestoneForm(false)} style={{ maxWidth: 560 }}>
@@ -515,26 +628,28 @@ export function TestPlansPage() {
                   </select>
                 </label>
               </div>
-              <div>
-                <label>Linked test plans <span className="hint">({milestoneForm.testPlanIds.length} selected)</span></label>
-                <div className="req-tc-picker" style={{ maxHeight: 200 }}>
-                  {plans.length === 0 ? (
-                    <p className="panel-empty-text">No test plans yet.</p>
-                  ) : (
-                    plans.map((plan) => (
-                      <label key={plan.id} className="req-tc-option">
-                        <input
-                          className="row-checkbox"
-                          type="checkbox"
-                          checked={milestoneForm.testPlanIds.includes(plan.id)}
-                          onChange={() => toggleMilestonePlan(plan.id)}
-                        />
-                        <span className="req-tc-title">{plan.name}</span>
-                      </label>
-                    ))
-                  )}
+              {editingMilestone && (
+                <div>
+                  <label>Linked test plans <span className="hint">({milestoneForm.testPlanIds.length} selected)</span></label>
+                  <div className="req-tc-picker" style={{ maxHeight: 200 }}>
+                    {plans.length === 0 ? (
+                      <p className="panel-empty-text">No test plans yet.</p>
+                    ) : (
+                      plans.map((plan) => (
+                        <label key={plan.id} className="req-tc-option">
+                          <input
+                            className="row-checkbox"
+                            type="checkbox"
+                            checked={milestoneForm.testPlanIds.includes(plan.id)}
+                            onChange={() => toggleMilestonePlan(plan.id)}
+                          />
+                          <span className="req-tc-title">{plan.name}</span>
+                        </label>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
               <div className="modal-footer">
                 <button type="button" className="secondary-button" onClick={() => setShowMilestoneForm(false)}>Cancel</button>
                 <button type="submit" className="primary-button" disabled={!milestoneForm.name.trim()}>
@@ -544,13 +659,14 @@ export function TestPlansPage() {
             </form>
           </Modal>
         )}
-      </>
+      </div>
     )
   }
 
   return (
     <>
       <PageHeader
+        backTo={`/projects`}
         title="Test plans & milestones"
         description="Group test runs by release or sprint and track progress against deadlines."
         action={
@@ -560,16 +676,40 @@ export function TestPlansPage() {
         }
       />
 
+      {/* Summary Metrics Strip */}
+      <div className="tp-summary-strip">
+        <div className="tp-summary-card">
+          <span className="tp-summary-label">Plans</span>
+          <strong className="tp-summary-value">{plans.length}</strong>
+          <span className="tp-summary-sub">
+            {summaryStats.activePlans} active · {summaryStats.completedPlans} done
+          </span>
+        </div>
+        <div className="tp-summary-divider" />
+        <div className="tp-summary-card">
+          <span className="tp-summary-label">Milestones</span>
+          <strong className="tp-summary-value">{milestones.length}</strong>
+          <span className="tp-summary-sub">
+            {summaryStats.activeMilestones} active · {summaryStats.completedMilestones} done
+          </span>
+        </div>
+        <div className="tp-summary-divider" />
+        <div className="tp-summary-card">
+          <span className="tp-summary-label">Total cases</span>
+          <strong className="tp-summary-value">{summaryStats.totalCases}</strong>
+          <span className="tp-summary-sub">
+            {summaryStats.totalPassed} passed
+          </span>
+        </div>
+        <div className="tp-summary-divider" />
+        <div className="tp-summary-card">
+          <span className="tp-summary-label">Pass rate</span>
+          <strong className="tp-summary-value tp-summary-value--rate">{summaryStats.overallPassRate}%</strong>
+          <span className="tp-summary-sub">across all plans</span>
+        </div>
+      </div>
+
       <div className="tab-navigation" role="tablist">
-        <button
-          type="button"
-          role="tab"
-          aria-selected={tab === 'plans'}
-          className={`tab-btn${tab === 'plans' ? ' tab-btn--active' : ''}`}
-          onClick={() => setTab('plans')}
-        >
-          Test plans ({plans.length})
-        </button>
         <button
           type="button"
           role="tab"
@@ -577,7 +717,18 @@ export function TestPlansPage() {
           className={`tab-btn${tab === 'milestones' ? ' tab-btn--active' : ''}`}
           onClick={() => setTab('milestones')}
         >
-          Milestones ({milestones.length})
+          <span>Milestones</span>
+          <span className="tab-count-badge">{milestones.length}</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={tab === 'plans'}
+          className={`tab-btn${tab === 'plans' ? ' tab-btn--active' : ''}`}
+          onClick={() => setTab('plans')}
+        >
+          <span>Test plans</span>
+          <span className="tab-count-badge">{plans.length}</span>
         </button>
       </div>
 
@@ -595,13 +746,46 @@ export function TestPlansPage() {
             </div>
           ) : (
             <>
+              {/* Filter toolbar */}
+              <div className="toolbar">
+                <input
+                  type="search"
+                  className="toolbar-search"
+                  placeholder="Search plans…"
+                  value={planSearch}
+                  onChange={(e) => setPlanSearch(e.target.value)}
+                  aria-label="Search plans"
+                />
+                <select
+                  value={planStatusFilter}
+                  onChange={(e) => setPlanStatusFilter(e.target.value)}
+                  aria-label="Filter by status"
+                  className={planStatusFilter ? 'filter-active' : ''}
+                >
+                  <option value="">All status</option>
+                  <option value="Open">Open</option>
+                  <option value="Completed">Completed</option>
+                </select>
+                {(planSearch || planStatusFilter) && (
+                  <button
+                    className="filter-clear-btn"
+                    type="button"
+                    onClick={() => { setPlanSearch(''); setPlanStatusFilter('') }}
+                  >
+                    Clear filters
+                  </button>
+                )}
+                <span className="toolbar-info">
+                  {planRows.length} of {plans.length} plan{plans.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
               {/* Desktop table */}
               <div className="table-wrap tp-table-wrap">
                 <table className="tp-table">
                   <thead>
                     <tr>
                       <th>Plan</th>
-                      <th>Runs</th>
                       <th>Progress</th>
                       <th>Pass rate</th>
                       <th>Status</th>
@@ -610,14 +794,24 @@ export function TestPlansPage() {
                   </thead>
                   <tbody>
                     {planRows.map(({ plan, metrics }) => (
-                      <tr key={plan.id}>
+                      <tr key={plan.id} className={`tp-row tp-row--${plan.status === 'Completed' ? 'completed' : 'active'}`}>
                         <td>
-                          <button className="link-btn" type="button" onClick={() => setSelectedPlanId(plan.id)}>
-                            {plan.name}
-                          </button>
-                          {plan.description && <p className="req-desc">{plan.description}</p>}
+                          <div className="tp-row-name">
+                            <button className="link-btn tp-row-title" type="button" onClick={() => setSelectedPlanId(plan.id)}>
+                              {plan.name}
+                            </button>
+                            {plan.description && <p className="tp-row-desc">{plan.description}</p>}
+                            <div className="tp-row-tags">
+                              {metrics.scopeTotal > 0 && <span className="tp-tag">{metrics.scopeTotal} scope cases</span>}
+                              {metrics.totalRuns > 0 && <span className="tp-tag">{metrics.totalRuns} run{metrics.totalRuns !== 1 ? 's' : ''}</span>}
+                              {plan.completedAt && (
+                                <span className="tp-tag tp-tag--neutral">
+                                  Done {new Date(plan.completedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </td>
-                        <td>{metrics.totalRuns} run{metrics.totalRuns !== 1 ? 's' : ''}</td>
                         <td>
                           <div className="req-progress-cell">
                             <div className="req-progress-track">
@@ -626,10 +820,32 @@ export function TestPlansPage() {
                             <span className="req-progress-pct">{metrics.progressPct}%</span>
                           </div>
                         </td>
-                        <td>{metrics.passRate}%</td>
-                        <td><StatusPill tone={plan.status === 'Completed' ? 'passed' : 'pending'}>{plan.status || 'Open'}</StatusPill></td>
+                        <td><span className="tp-rate-num">{metrics.passRate}%</span></td>
+                        <td>
+                          <button
+                            className={`tp-status-toggle ${plan.status === 'Completed' ? 'tp-status-toggle--done' : 'tp-status-toggle--open'}`}
+                            type="button"
+                            onClick={() => togglePlanStatus(plan)}
+                            title={plan.status === 'Completed' ? 'Reopen plan' : 'Mark complete'}
+                            aria-label={plan.status === 'Completed' ? 'Reopen plan' : 'Mark complete'}
+                          >
+                            <CheckIcon width={12} height={12} />
+                            <span>{plan.status === 'Completed' ? 'Done' : 'Open'}</span>
+                          </button>
+                        </td>
                         <td style={{ textAlign: 'right' }}>
                           <div className="table-row-actions">
+                            {metrics.scopeTotal > 0 && plan.status !== 'Completed' && (
+                              <Link
+                                to={`/projects/${projectId}/test-runs?planId=${plan.id}`}
+                                className="icon-btn-action icon-btn-action--run"
+                                title="Start a run"
+                                aria-label="Start a run"
+                                style={{ textDecoration: 'none' }}
+                              >
+                                <PlayIcon width={14} height={14} />
+                              </Link>
+                            )}
                             <button className="icon-btn-action" type="button" title="Edit" aria-label="Edit" onClick={() => openEditPlan(plan)}>
                               <PencilIcon width={14} height={14} />
                             </button>
@@ -652,8 +868,22 @@ export function TestPlansPage() {
                       <div>
                         <button className="tp-card-name link-btn" type="button" style={{ textAlign: 'left', background: 'none', border: 'none', padding: 0, font: 'inherit' }} onClick={() => setSelectedPlanId(plan.id)}>{plan.name}</button>
                         {plan.description && <p className="tp-card-desc">{plan.description}</p>}
+                        {plan.completedAt && (
+                          <span className="tp-tag tp-tag--neutral" style={{ marginTop: 4, display: 'inline-block' }}>
+                            Done {new Date(plan.completedAt).toLocaleDateString()}
+                          </span>
+                        )}
                       </div>
-                      <StatusPill tone={plan.status === 'Completed' ? 'passed' : 'pending'}>{plan.status || 'Open'}</StatusPill>
+                      <button
+                        className={`tp-status-toggle ${plan.status === 'Completed' ? 'tp-status-toggle--done' : 'tp-status-toggle--open'}`}
+                        type="button"
+                        onClick={() => togglePlanStatus(plan)}
+                        title={plan.status === 'Completed' ? 'Reopen plan' : 'Mark complete'}
+                        aria-label={plan.status === 'Completed' ? 'Reopen plan' : 'Mark complete'}
+                      >
+                        <CheckIcon width={12} height={12} />
+                        <span>{plan.status === 'Completed' ? 'Done' : 'Open'}</span>
+                      </button>
                     </div>
                     <div className="tp-card-meta">
                       <div className="tp-card-meta-item">
@@ -674,6 +904,16 @@ export function TestPlansPage() {
                       </div>
                     </div>
                     <div className="tp-card-actions">
+                      {metrics.scopeTotal > 0 && plan.status !== 'Completed' && (
+                        <Link
+                          to={`/projects/${projectId}/test-runs?planId=${plan.id}`}
+                          className="secondary-button start-run-btn"
+                          style={{ textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        >
+                          <PlayIcon width={12} height={12} />
+                          <span>Run</span>
+                        </Link>
+                      )}
                       <button className="secondary-button" type="button" onClick={() => openEditPlan(plan)}>
                         <PencilIcon width={14} height={14} /> Edit
                       </button>
@@ -703,35 +943,79 @@ export function TestPlansPage() {
             </div>
           ) : (
             <>
+              {/* Filter toolbar */}
+              <div className="toolbar">
+                <input
+                  type="search"
+                  className="toolbar-search"
+                  placeholder="Search milestones…"
+                  value={milestoneSearch}
+                  onChange={(e) => setMilestoneSearch(e.target.value)}
+                  aria-label="Search milestones"
+                />
+                <select
+                  value={milestoneStatusFilter}
+                  onChange={(e) => setMilestoneStatusFilter(e.target.value)}
+                  aria-label="Filter by status"
+                  className={milestoneStatusFilter ? 'filter-active' : ''}
+                >
+                  <option value="">All status</option>
+                  <option value="Open">Open</option>
+                  <option value="Completed">Completed</option>
+                </select>
+                {(milestoneSearch || milestoneStatusFilter) && (
+                  <button
+                    className="filter-clear-btn"
+                    type="button"
+                    onClick={() => { setMilestoneSearch(''); setMilestoneStatusFilter('') }}
+                  >
+                    Clear filters
+                  </button>
+                )}
+                <span className="toolbar-info">
+                  {milestoneRows.length} of {milestones.length} milestone{milestones.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
               {/* Desktop table */}
               <div className="table-wrap ms-table-wrap">
                 <table className="ms-table">
                   <thead>
                     <tr>
                       <th>Milestone</th>
-                      <th>Due</th>
-                      <th>Plans</th>
                       <th>Progress</th>
                       <th>On track</th>
+                      <th>Status</th>
                       <th></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {milestoneRows.map(({ milestone, metrics }) => (
-                      <tr key={milestone.id}>
+                    {milestoneRows.map(({ milestone, metrics }) => {
+                      const dueDateStr = milestone.dueDate ? new Date(milestone.dueDate).toLocaleDateString() : null
+                      const urgencyTone = metrics.overdue ? 'failed' : metrics.daysLeft !== null && metrics.daysLeft <= 3 ? 'pending' : 'neutral'
+                      return (
+                      <tr key={milestone.id} className={`tp-row tp-row--${milestone.status === 'Completed' ? 'completed' : 'active'}`}>
                         <td>
-                          <button className="link-btn" type="button" onClick={() => setSelectedMilestoneId(milestone.id)}>
-                            {milestone.name}
-                          </button>
-                          {milestone.description && <p className="req-desc">{milestone.description}</p>}
+                          <div className="tp-row-name">
+                            <button className="link-btn tp-row-title" type="button" onClick={() => setSelectedMilestoneId(milestone.id)}>
+                              {milestone.name}
+                            </button>
+                            {milestone.description && <p className="tp-row-desc">{milestone.description}</p>}
+                            <div className="tp-row-tags">
+                              {dueDateStr && <span className="tp-tag">Due {dueDateStr}</span>}
+                              {metrics.totalPlans > 0 && <span className="tp-tag">{metrics.totalPlans} plan{metrics.totalPlans !== 1 ? 's' : ''}</span>}
+                              {metrics.overdue && <span className="tp-tag tp-tag--danger">Overdue</span>}
+                              {!metrics.overdue && metrics.daysLeft !== null && metrics.daysLeft >= 0 && (
+                                <span className={`tp-tag tp-tag--${urgencyTone}`}>{metrics.daysLeft}d left</span>
+                              )}
+                              {milestone.completedAt && (
+                                <span className="tp-tag tp-tag--neutral">
+                                  Done {new Date(milestone.completedAt).toLocaleDateString()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
                         </td>
-                        <td>
-                          {milestone.dueDate
-                            ? new Date(milestone.dueDate).toLocaleDateString()
-                            : '—'}
-                          {metrics.overdue && <StatusPill tone="failed" style={{ marginLeft: 6 }}>Overdue</StatusPill>}
-                        </td>
-                        <td>{metrics.totalPlans}</td>
                         <td>
                           <div className="req-progress-cell">
                             <div className="req-progress-track">
@@ -745,6 +1029,18 @@ export function TestPlansPage() {
                             {metrics.onTrack ? 'On track' : 'At risk'}
                           </StatusPill>
                         </td>
+                        <td>
+                          <button
+                            className={`tp-status-toggle ${milestone.status === 'Completed' ? 'tp-status-toggle--done' : 'tp-status-toggle--open'}`}
+                            type="button"
+                            onClick={() => toggleMilestoneStatus(milestone)}
+                            title={milestone.status === 'Completed' ? 'Reopen milestone' : 'Mark complete'}
+                            aria-label={milestone.status === 'Completed' ? 'Reopen milestone' : 'Mark complete'}
+                          >
+                            <CheckIcon width={12} height={12} />
+                            <span>{milestone.status === 'Completed' ? 'Done' : 'Open'}</span>
+                          </button>
+                        </td>
                         <td style={{ textAlign: 'right' }}>
                           <div className="table-row-actions">
                             <button className="icon-btn-action" type="button" title="Edit" aria-label="Edit" onClick={() => openEditMilestone(milestone)}>
@@ -756,7 +1052,8 @@ export function TestPlansPage() {
                           </div>
                         </td>
                       </tr>
-                    ))}
+                      )
+                    })}
                   </tbody>
                 </table>
               </div>
@@ -769,10 +1066,26 @@ export function TestPlansPage() {
                       <div>
                         <button className="tp-card-name link-btn" type="button" style={{ textAlign: 'left', background: 'none', border: 'none', padding: 0, font: 'inherit' }} onClick={() => setSelectedMilestoneId(milestone.id)}>{milestone.name}</button>
                         {milestone.description && <p className="tp-card-desc">{milestone.description}</p>}
+                        {milestone.completedAt && (
+                          <span className="tp-tag tp-tag--neutral" style={{ marginTop: 4, display: 'inline-block' }}>
+                            Done {new Date(milestone.completedAt).toLocaleDateString()}
+                          </span>
+                        )}
                       </div>
-                      <StatusPill tone={metrics.onTrack ? 'passed' : 'failed'}>
-                        {metrics.onTrack ? 'On track' : 'At risk'}
-                      </StatusPill>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+                        <StatusPill tone={metrics.onTrack ? 'passed' : 'failed'}>
+                          {metrics.onTrack ? 'On track' : 'At risk'}
+                        </StatusPill>
+                        <button
+                          className={`tp-status-toggle tp-status-toggle--sm ${milestone.status === 'Completed' ? 'tp-status-toggle--done' : 'tp-status-toggle--open'}`}
+                          type="button"
+                          onClick={() => toggleMilestoneStatus(milestone)}
+                          aria-label={milestone.status === 'Completed' ? 'Reopen milestone' : 'Mark complete'}
+                        >
+                          <CheckIcon width={10} height={10} />
+                          <span>{milestone.status === 'Completed' ? 'Done' : 'Open'}</span>
+                        </button>
+                      </div>
                     </div>
                     <div className="tp-card-meta">
                       <div className="tp-card-meta-item">
@@ -829,13 +1142,15 @@ export function TestPlansPage() {
                   {PLAN_STATUSES.map((s) => <option key={s}>{s}</option>)}
                 </select>
               </label>
-              <label>
-                Milestone
-                <select value={planForm.milestoneId} onChange={setPlan('milestoneId')}>
-                  <option value="">None</option>
-                  {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
-              </label>
+              {milestones.length > 0 && (
+                <label>
+                  Milestone
+                  <select value={planForm.milestoneId} onChange={setPlan('milestoneId')}>
+                    <option value="">None</option>
+                    {milestones.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+                  </select>
+                </label>
+              )}
             </div>
             <div>
               <label>Linked requirements <span className="hint">({(planForm.requirementIds || []).length} selected)</span></label>
@@ -893,26 +1208,28 @@ export function TestPlansPage() {
                 </select>
               </label>
             </div>
-            <div>
-              <label>Linked test plans <span className="hint">({milestoneForm.testPlanIds.length} selected)</span></label>
-              <div className="req-tc-picker" style={{ maxHeight: 200 }}>
-                {plans.length === 0 ? (
-                  <p className="panel-empty-text">No test plans yet.</p>
-                ) : (
-                  plans.map((plan) => (
-                    <label key={plan.id} className="req-tc-option">
-                      <input
-                        className="row-checkbox"
-                        type="checkbox"
-                        checked={milestoneForm.testPlanIds.includes(plan.id)}
-                        onChange={() => toggleMilestonePlan(plan.id)}
-                      />
-                      <span className="req-tc-title">{plan.name}</span>
-                    </label>
-                  ))
-                )}
+            {editingMilestone && (
+              <div>
+                <label>Linked test plans <span className="hint">({milestoneForm.testPlanIds.length} selected)</span></label>
+                <div className="req-tc-picker" style={{ maxHeight: 200 }}>
+                  {plans.length === 0 ? (
+                    <p className="panel-empty-text">No test plans yet.</p>
+                  ) : (
+                    plans.map((plan) => (
+                      <label key={plan.id} className="req-tc-option">
+                        <input
+                          className="row-checkbox"
+                          type="checkbox"
+                          checked={milestoneForm.testPlanIds.includes(plan.id)}
+                          onChange={() => toggleMilestonePlan(plan.id)}
+                        />
+                        <span className="req-tc-title">{plan.name}</span>
+                      </label>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
+            )}
             <div className="modal-footer">
               <button type="button" className="secondary-button" onClick={() => setShowMilestoneForm(false)}>Cancel</button>
               <button type="submit" className="primary-button" disabled={!milestoneForm.name.trim()}>

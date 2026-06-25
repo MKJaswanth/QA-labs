@@ -516,6 +516,189 @@
   .ld-report-summary { grid-template-columns: repeat(2, 1fr); }
 }
 
+/* ── Panel wrapper for tour overlay ──────────────────────── */
+.ld-panel-wrap {
+  position: relative;
+}
+
+/* ── Tour overlay ────────────────────────────────────────── */
+.ld-tour-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(to top, rgba(255,255,255,0.98) 60%, rgba(255,255,255,0.85) 85%, transparent);
+  padding: 36px 16px 14px;
+  animation: tour-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  pointer-events: auto;
+}
+
+@keyframes tour-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.ld-tour-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 750;
+  color: var(--text-strong);
+  margin-bottom: 4px;
+}
+
+.ld-tour-desc {
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+.ld-tour-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+}
+
+.ld-tour-dots {
+  display: flex;
+  gap: 5px;
+}
+
+.ld-tour-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  transition: all 0.25s ease;
+}
+
+.ld-tour-dot--active {
+  width: 18px;
+  border-radius: 3px;
+  background: var(--accent);
+}
+
+.ld-tour-dot--pulse {
+  animation: ld-pulse 1.2s ease-in-out infinite;
+  background: var(--accent);
+}
+
+.ld-tour-end-btn {
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.ld-tour-end-btn:hover {
+  color: var(--text-strong);
+  border-color: var(--border-strong);
+  background: var(--soft-bg);
+}
+
+/* ── Tour tab-bar pill ──────────────────────────────────── */
+.lp-demo-tab-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+}
+
+.ld-tour-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-soft);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.ld-tour-tab-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+.ld-tour-tab-btn--active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.ld-tour-tab-btn--active:hover {
+  background: #fef0f0;
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+/* ── Animated keyboard shortcuts in demo ──────────────────── */
+.ld-kbd {
+  padding: 2px 5px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--soft-bg);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.ld-kbd--active {
+  transform: scale(1.08);
+  box-shadow: 0 0 0 2px color-mix(in srgb, currentColor 25%, transparent);
+}
+
+.ld-kbd--pass {
+  background: #e9f7ee !important;
+  border-color: #22c55e !important;
+  color: #1a6b37 !important;
+}
+
+.ld-kbd--fail {
+  background: #fef0f0 !important;
+  border-color: #ef4444 !important;
+  color: #a93030 !important;
+}
+
+.ld-kbd--blocker {
+  background: #fbe3e3 !important;
+  border-color: #7f1d1d !important;
+  color: #7f1d1d !important;
+}
+
+/* ── Enhanced demo tab transition ────────────────────────── */
+.ld-panel {
+  animation: ld-switch 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes ld-switch {
+  0% {
+    opacity: 0;
+    transform: translateX(8px) scale(0.98);
+  }
+  100% {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+@keyframes ld-fade {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 @media (max-width: 560px) {
   .lp-demo-tabs { padding: 4px; gap: 1px; }
   .lp-demo-tab { font-size: 10px; height: 28px; padding: 0 6px; }
@@ -523,4 +706,7 @@
   .ld-run-case { min-width: 32px; padding: 4px 6px; }
   .ld-bug-row { grid-template-columns: 1fr auto; }
   .ld-bug-id, .ld-severity { display: none; }
+  .ld-tour-overlay { padding: 28px 12px 12px; }
+  .ld-tour-title { font-size: 12px; }
+  .ld-tour-desc { font-size: 11px; }
 }

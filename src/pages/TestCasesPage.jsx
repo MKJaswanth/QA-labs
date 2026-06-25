@@ -340,6 +340,7 @@ export function TestCasesPage() {
   return (
     <>
       <PageHeader
+        backTo={`/projects`}
         title="Test cases"
         description="Filter, review, and prepare cases for the next test run."
         action={

@@ -230,7 +230,7 @@ export function JUnitUploadModal({
       }}
       title="Import automated JUnit results"
     >
-      <div className="junit-modal-content" style={{ display: 'grid', gap: '16px', fontSize: '13px' }}>
+      <div className="junit-modal-content">
         {errorMsg && (
           <div className="error-banner" style={{ background: '#fef2f2', color: '#dc2626', padding: '10px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
             <AlertTriangleIcon width={16} height={16} />
@@ -312,9 +312,10 @@ export function JUnitUploadModal({
               )}
             </div>
 
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', background: 'var(--page-bg)', padding: '12px', borderRadius: '8px' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', margin: 0 }}>
+            <div className="junit-option-row">
+              <label className="junit-checkbox-label">
                 <input
+                  className="junit-checkbox"
                   type="checkbox"
                   checked={autoLogBugs}
                   onChange={(e) => setAutoLogBugs(e.target.checked)}

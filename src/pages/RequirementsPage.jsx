@@ -9,7 +9,9 @@ import { useBugs } from '../hooks/useBugs'
 import { RequirementBulkUploadModal } from '../components/RequirementBulkUploadModal'
 import { useConfirm } from '../context/useConfirm'
 import { useToast } from '../context/useToast'
-import { normalizeTestStatus } from '../utils/status'
+import { useUser } from '../context/UserContext'
+import { normalizeTestStatus, TEST_STATUSES, STATUS_TONE } from '../utils/status'
+import { withHistory, historyEntry } from '../utils/history'
 import { useUserRole } from '../hooks/useUserRole'
 import { requirementMatchesSearch } from '../utils/entitySearch'
 import { testCaseMatchesSearch } from '../utils/testCaseSearch'
@@ -37,9 +39,10 @@ function coverageOf(req, tcById) {
 export function RequirementsPage() {
   const { projectId, requirementId } = useParams()
   const { requirements, addRequirement, updateRequirement, removeRequirement } = useRequirements(projectId)
-  const { testCases } = useTestCases(projectId)
+  const { testCases, updateTestCase } = useTestCases(projectId)
   const { bugs } = useBugs(projectId)
   const { isLead } = useUserRole()
+  const { user } = useUser()
   const confirm = useConfirm()
   const toast = useToast()
 
@@ -47,6 +50,7 @@ export function RequirementsPage() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(blankForm)
   const [tcSearch, setTcSearch] = useState('')
+  const [tcModuleFilter, setTcModuleFilter] = useState('')
   const [search, setSearch] = useState('')
   const [showImport, setShowImport] = useState(false)
 
@@ -71,7 +75,7 @@ export function RequirementsPage() {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const openAdd = () => { setEditing(null); setForm(blankForm()); setTcSearch(''); setShowForm(true) }
+  const openAdd = () => { setEditing(null); setForm(blankForm()); setTcSearch(''); setTcModuleFilter(''); setShowForm(true) }
   const openEdit = (req) => {
     setEditing(req)
     setForm({
@@ -82,6 +86,7 @@ export function RequirementsPage() {
       testCaseIds: req.testCaseIds || [],
     })
     setTcSearch('')
+    setTcModuleFilter('')
     setShowForm(true)
   }
 
@@ -113,9 +118,22 @@ export function RequirementsPage() {
     if (ok) { removeRequirement(req.id); toast.success('Requirement deleted') }
   }
 
-  const filteredTcs = testCases.filter((tc) => {
-    return testCaseMatchesSearch(tc, tcSearch)
-  })
+  // Unique module values for the picker filter
+  const tcModules = useMemo(() => [...new Set(testCases.map((t) => t.module).filter(Boolean))].sort(), [testCases])
+
+  const filteredTcs = useMemo(() => {
+    const matched = testCases.filter((tc) => {
+      if (!testCaseMatchesSearch(tc, tcSearch)) return false
+      if (tcModuleFilter && tc.module !== tcModuleFilter) return false
+      return true
+    })
+    // Sort by sourceTcId ascending (TC-XX-001, TC-XX-002…)
+    return [...matched].sort((a, b) => {
+      const idA = a.sourceTcId || ''
+      const idB = b.sourceTcId || ''
+      return idA.localeCompare(idB)
+    })
+  }, [testCases, tcSearch, tcModuleFilter])
 
   if (requirementId) {
     const detail = rows.find(({ req }) => req.id === requirementId)
@@ -147,7 +165,7 @@ export function RequirementsPage() {
               <Link to={`/projects/${projectId}/requirements`} className="secondary-button">Back</Link>
               {cov.total > 0 && isLead && (
                 <Link 
-                  to={`/projects/${projectId}/test-runs?runCases=${req.testCaseIds.join(',')}&reqId=${req.id}&reqKey=${encodeURIComponent(req.key || '')}&reqTitle=${encodeURIComponent(req.title)}`} 
+                  to={`/projects/${projectId}/test-runs?runCases=${cov.linked.map(tc => tc.id).join(',')}&reqId=${req.id}&reqKey=${encodeURIComponent(req.key || '')}&reqTitle=${encodeURIComponent(req.title)}`} 
                   className="primary-button"
                   style={{ textDecoration: 'none' }}
                 >
@@ -212,7 +230,19 @@ export function RequirementsPage() {
                       <td><Link className="text-link" to={`/projects/${projectId}/test-cases/${tc.id}`}>{tc.title}</Link></td>
                       <td>{tc.module || '—'}</td>
                       <td>{tc.priority || '—'}</td>
-                      <td><StatusPill tone={normalizeTestStatus(tc.status) === 'Pass' ? 'passed' : ['Fail', 'Blocker'].includes(normalizeTestStatus(tc.status)) ? 'failed' : 'pending'}>{tc.status || 'Not Executed'}</StatusPill></td>
+                      <td onClick={(e) => e.stopPropagation()}>
+                        <select
+                          className={`inline-select status-select status-select--${STATUS_TONE[tc.status] ?? 'pending'}`}
+                          value={tc.status || 'Not Executed'}
+                          aria-label={`Status for ${tc.title}`}
+                          onChange={(e) => updateTestCase(withHistory(
+                            { ...tc, status: e.target.value, updatedAt: new Date().toISOString() },
+                            historyEntry('status', user, `Status changed to ${e.target.value}`, tc.status, e.target.value),
+                          ))}
+                        >
+                          {TEST_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                        </select>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -280,12 +310,31 @@ export function RequirementsPage() {
               </label>
               <div>
                 <label>Linked test cases <span className="hint">({form.testCaseIds.length} selected)</span></label>
-                <input
-                  value={tcSearch}
-                  onChange={(e) => setTcSearch(e.target.value)}
-                  placeholder="Search test cases…"
-                  style={{ marginBottom: 8 }}
-                />
+                <div className="req-tc-toolbar">
+                  <input
+                    value={tcSearch}
+                    onChange={(e) => setTcSearch(e.target.value)}
+                    placeholder="Search test cases…"
+                    className="req-tc-search"
+                  />
+                  {tcModules.length > 0 && (
+                    <select
+                      value={tcModuleFilter}
+                      onChange={(e) => setTcModuleFilter(e.target.value)}
+                      className={`req-tc-module-select${tcModuleFilter ? ' filter-active' : ''}`}
+                      aria-label="Filter by module"
+                    >
+                      <option value="">All modules</option>
+                      {tcModules.map((m) => <option key={m} value={m}>{m}</option>)}
+                    </select>
+                  )}
+                </div>
+                {tcModuleFilter && (
+                  <span className="req-tc-active-filter">
+                    Module: {tcModuleFilter}
+                    <button type="button" className="req-tc-filter-clear" onClick={() => setTcModuleFilter('')} aria-label="Clear module filter">×</button>
+                  </span>
+                )}
                 <div className="req-tc-picker">
                   {testCases.length === 0 ? (
                     <p className="panel-empty-text">No test cases in this project yet.</p>
@@ -323,6 +372,7 @@ export function RequirementsPage() {
   return (
     <>
       <PageHeader
+        backTo={`/projects`}
         title="Requirements"
         description="Track which features are covered by tests and whether they pass."
         action={
@@ -489,7 +539,7 @@ export function RequirementsPage() {
                         {cov.total > 0 && isLead && (
                           <Link 
                             className="icon-btn-action" 
-                            to={`/projects/${projectId}/test-runs?runCases=${req.testCaseIds.join(',')}&reqId=${req.id}&reqKey=${encodeURIComponent(req.key || '')}&reqTitle=${encodeURIComponent(req.title)}`} 
+                            to={`/projects/${projectId}/test-runs?runCases=${cov.linked.map(tc => tc.id).join(',')}&reqId=${req.id}&reqKey=${encodeURIComponent(req.key || '')}&reqTitle=${encodeURIComponent(req.title)}`} 
                             title="Run linked tests"
                             aria-label="Run linked tests"
                           >
@@ -539,12 +589,31 @@ export function RequirementsPage() {
             </label>
             <div>
               <label>Linked test cases <span className="hint">({form.testCaseIds.length} selected)</span></label>
-              <input
-                value={tcSearch}
-                onChange={(e) => setTcSearch(e.target.value)}
-                placeholder="Search test cases…"
-                style={{ marginBottom: 8 }}
-              />
+              <div className="req-tc-toolbar">
+                <input
+                  value={tcSearch}
+                  onChange={(e) => setTcSearch(e.target.value)}
+                  placeholder="Search test cases…"
+                  className="req-tc-search"
+                />
+                {tcModules.length > 0 && (
+                  <select
+                    value={tcModuleFilter}
+                    onChange={(e) => setTcModuleFilter(e.target.value)}
+                    className={`req-tc-module-select${tcModuleFilter ? ' filter-active' : ''}`}
+                    aria-label="Filter by module"
+                  >
+                    <option value="">All modules</option>
+                    {tcModules.map((m) => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                )}
+              </div>
+              {tcModuleFilter && (
+                <span className="req-tc-active-filter">
+                  Module: {tcModuleFilter}
+                  <button type="button" className="req-tc-filter-clear" onClick={() => setTcModuleFilter('')} aria-label="Clear module filter">×</button>
+                </span>
+              )}
               <div className="req-tc-picker">
                 {testCases.length === 0 ? (
                   <p className="panel-empty-text">No test cases in this project yet.</p>

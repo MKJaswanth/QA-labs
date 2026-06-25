@@ -437,3 +437,77 @@ export async function fetchProjectDataOnce(projectId) {
   ])
   return { testCases, bugs, runs, requirements, testPlans, milestones }
 }
+
+
+// Comments — nested under project/entityType/entityId/comments
+const commentsPath = (projectId, entityType, entityId) =>
+  [...projectPath(projectId), entityType + 's', entityId, 'comments']
+
+export const subscribeComments = (projectId, entityType, entityId, onChange) =>
+  subscribe(commentsPath(projectId, entityType, entityId), onChange, byCreatedAtAsc)
+
+export const saveCommentRemote = (projectId, entityType, entityId, comment) =>
+  upsert(commentsPath(projectId, entityType, entityId), comment)
+
+export async function deleteCommentRemote(projectId, entityType, entityId, commentId) {
+  if (!isFirebaseEnabled || !db) return
+  try {
+    await deleteDoc(doc(db, ...commentsPath(projectId, entityType, entityId), commentId))
+  } catch (err) {
+    console.error('[remoteStorage] Comment deletion failed:', err)
+  }
+}
+
+// Invite token — stored on the workspace root doc
+export async function getOrCreateInviteToken() {
+  ensureFirebase()
+  const wsRef = doc(db, ...workspacePath())
+  const snap = await getDoc(wsRef)
+  const data = snap.exists() ? snap.data() : {}
+  if (data.inviteToken) return data.inviteToken
+  const token = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+  await setDoc(wsRef, { inviteToken: token }, { merge: true })
+  return token
+}
+
+export async function revokeInviteToken() {
+  ensureFirebase()
+  const wsRef = doc(db, ...workspacePath())
+  await setDoc(wsRef, { inviteToken: null }, { merge: true })
+}
+
+export async function validateInviteToken(token) {
+  ensureFirebase()
+  const wsRef = doc(db, ...workspacePath())
+  const snap = await getDoc(wsRef)
+  if (!snap.exists()) return false
+  return snap.data().inviteToken === token
+}
+
+// Project-scoped invite tokens — stored on the project doc itself
+export async function getOrCreateProjectInviteToken(projectId) {
+  ensureFirebase()
+  const ref = doc(db, ...projectsPath(), projectId)
+  const snap = await getDoc(ref)
+  const data = snap.exists() ? snap.data() : {}
+  if (data.inviteToken) return data.inviteToken
+  const token = 'p_' + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2)
+  await setDoc(ref, { inviteToken: token }, { merge: true })
+  return token
+}
+
+export async function revokeProjectInviteToken(projectId) {
+  ensureFirebase()
+  const ref = doc(db, ...projectsPath(), projectId)
+  await setDoc(ref, { inviteToken: null }, { merge: true })
+}
+
+// Returns projectId if token is valid, null otherwise
+export async function validateProjectInviteToken(token) {
+  ensureFirebase()
+  const snapshot = await getDocs(collection(db, ...projectsPath()))
+  for (const d of snapshot.docs) {
+    if (d.data().inviteToken === token) return d.id
+  }
+  return null
+}

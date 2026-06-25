@@ -8,8 +8,9 @@ import { useConfirm } from '../context/useConfirm'
 import { useToast } from '../context/useToast'
 import { useActivity } from '../hooks/useActivity'
 import { TrashIcon, CheckIcon, ShieldCheckIcon } from '../components/Icons'
-import { auth } from '../utils/firebase'
+import { auth, isFirebaseEnabled } from '../utils/firebase'
 import { memberMatchesSearch } from '../utils/entitySearch'
+import { getOrCreateInviteToken, revokeInviteToken } from '../utils/remoteStorage'
 
 // Inline SVG components for high-quality, modern icons
 const ProfileIcon = (props) => (
@@ -65,6 +66,8 @@ export function WorkspaceSettingsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [newMemberName, setNewMemberName] = useState('')
   const [newMemberRole, setNewMemberRole] = useState('Tester')
+  const [inviteLink, setInviteLink] = useState('')
+  const [inviteLoading, setInviteLoading] = useState(false)
 
   const handleSaveProfile = (e) => {
     e.preventDefault()
@@ -106,6 +109,30 @@ export function WorkspaceSettingsPage() {
     toast.success(`Member "${trimmed}" added as ${newMemberRole}`)
     setNewMemberName('')
     setNewMemberRole('Tester')
+  }
+
+  const handleGenerateInvite = async () => {
+    if (!isFirebaseEnabled) { toast.error('Invite links require Firebase to be enabled.'); return }
+    setInviteLoading(true)
+    try {
+      const token = await getOrCreateInviteToken()
+      const link = `${window.location.origin}${window.location.pathname}#/join/${token}`
+      setInviteLink(link)
+      await navigator.clipboard.writeText(link)
+      toast.success('Invite link copied to clipboard!')
+    } catch (err) {
+      toast.error('Failed to generate invite link.')
+    } finally {
+      setInviteLoading(false)
+    }
+  }
+
+  const handleRevokeInvite = async () => {
+    const ok = await confirm({ title: 'Revoke invite link?', message: 'The current invite link will stop working. You can generate a new one anytime.', confirmLabel: 'Revoke', danger: true })
+    if (!ok) return
+    await revokeInviteToken()
+    setInviteLink('')
+    toast.success('Invite link revoked.')
   }
 
   // Active tab selection forced to 'profile' for non-leads
@@ -300,6 +327,43 @@ export function WorkspaceSettingsPage() {
                       </table>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Invite Link */}
+              <div className="settings-card" style={{ marginTop: '16px' }}>
+                <div className="settings-card-header">
+                  <h3>Invite by link</h3>
+                  <span className="shared-badge" style={{ background: '#fef3c7', color: '#d97706' }}>Admin Only</span>
+                </div>
+                <div className="settings-card-body">
+                  <p className="text-muted" style={{ fontSize: '13px', marginTop: 0 }}>
+                    Share this link with teammates. Anyone who opens it and signs in will be added to the workspace as a Viewer.
+                  </p>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {inviteLink && (
+                      <input
+                        readOnly
+                        value={inviteLink}
+                        className="input-disabled"
+                        style={{ flex: '1 1 300px', fontSize: '12px', fontFamily: 'monospace' }}
+                        onClick={(e) => e.target.select()}
+                      />
+                    )}
+                    <button
+                      type="button"
+                      className="primary-button"
+                      disabled={inviteLoading}
+                      onClick={handleGenerateInvite}
+                    >
+                      {inviteLoading ? 'Generating…' : inviteLink ? 'Copy link' : 'Generate invite link'}
+                    </button>
+                    {inviteLink && (
+                      <button type="button" className="danger-button" onClick={handleRevokeInvite}>
+                        Revoke
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
