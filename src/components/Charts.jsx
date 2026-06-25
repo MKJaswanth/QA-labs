@@ -78,74 +78,139 @@ export function RunTrend({ runs }) {
   )
 }
 
-// Full-width SVG line chart of pass rate over time — for reports and public report page
+// Full-width SVG line chart of pass rate over time — smooth bezier, gradient fill
 export function TrendLineChart({ runs }) {
   if (!runs || runs.length < 2) {
-    return <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '8px 0' }}>Not enough runs yet to show a trend. Need at least 2 completed runs.</p>
+    return (
+      <div style={{ padding: '32px 24px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+        Need at least 2 completed runs to show a trend.
+      </div>
+    )
   }
 
   const sorted = [...runs].sort((a, b) => new Date(a.completedAt || a.date || 0) - new Date(b.completedAt || b.date || 0))
   const points = sorted.map((r) => ({
     rate: r.total ? Math.round((r.passed / r.total) * 100) : 0,
-    label: r.name || new Date(r.completedAt || r.date).toLocaleDateString(),
-    date: r.completedAt || r.date,
+    label: r.name || new Date(r.completedAt || r.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }),
   }))
 
-  const W = 600, H = 200, padX = 40, padY = 20
-  const innerW = W - padX * 2
-  const innerH = H - padY * 2
-  const xStep = points.length > 1 ? innerW / (points.length - 1) : 0
-  const yScale = (v) => padY + innerH * (1 - v / 100)
-  const pts = points.map((p, i) => [padX + i * xStep, yScale(p.rate)])
-  const polyline = pts.map(([x, y]) => `${x},${y}`).join(' ')
-  const area = `${pts.map(([x, y]) => `${x},${y}`).join(' ')} ${padX + (points.length - 1) * xStep},${padY + innerH} ${padX},${padY + innerH}`
+  const W = 800, H = 240, padL = 44, padR = 20, padTop = 20, padBot = 44
+  const innerW = W - padL - padR
+  const innerH = H - padTop - padBot
+  const n = points.length
+  const xOf = (i) => padL + (n > 1 ? (i / (n - 1)) * innerW : innerW / 2)
+  const yOf = (v) => padTop + innerH * (1 - v / 100)
+  const pts = points.map((p, i) => [xOf(i), yOf(p.rate)])
 
-  // Y-axis grid lines at 0, 25, 50, 75, 100
+  // Smooth cubic bezier path
+  const curvePath = pts.reduce((acc, [x, y], i) => {
+    if (i === 0) return `M ${x},${y}`
+    const [px, py] = pts[i - 1]
+    const cpx = (px + x) / 2
+    return `${acc} C ${cpx},${py} ${cpx},${y} ${x},${y}`
+  }, '')
+
+  // Closed area path for gradient fill
+  const areaPath = `${curvePath} L ${pts[n - 1][0]},${padTop + innerH} L ${pts[0][0]},${padTop + innerH} Z`
+
+  const latest = points[n - 1].rate
+  const first = points[0].rate
+  const highest = Math.max(...points.map((p) => p.rate))
+  const lowest = Math.min(...points.map((p) => p.rate))
+  const netDelta = latest - first
+
+  const lineColor = latest >= 70 ? '#0b766d' : latest >= 50 ? '#f59e0b' : '#ef4444'
+  const gradId = 'tcg'
   const gridLines = [0, 25, 50, 75, 100]
 
-  const latest = points[points.length - 1].rate
-  const first = points[0].rate
-  const netDelta = latest - first
-  const lineColor = latest >= 70 ? '#10b981' : latest >= 50 ? '#f59e0b' : '#ef4444'
+  // Skip x-labels when too crowded
+  const maxLabels = 10
+  const labelStep = n > maxLabels ? Math.ceil(n / maxLabels) : 1
 
   return (
     <div className="trend-chart-wrap">
-      <svg viewBox={`0 0 ${W} ${H}`} className="trend-chart-svg" aria-label="Pass rate trend over runs">
-        {/* Grid */}
+      <svg viewBox={`0 0 ${W} ${H}`} className="trend-chart-svg" aria-label="Pass rate trend">
+        <defs>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={lineColor} stopOpacity="0.18" />
+            <stop offset="100%" stopColor={lineColor} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {/* Grid lines */}
         {gridLines.map((v) => (
           <g key={v}>
-            <line x1={padX} y1={yScale(v)} x2={W - padX} y2={yScale(v)} stroke="var(--border)" strokeWidth="1" strokeDasharray={v === 0 || v === 100 ? 'none' : '4 4'} />
-            <text x={padX - 6} y={yScale(v) + 4} textAnchor="end" fontSize="10" fill="var(--text-muted)">{v}%</text>
+            <line
+              x1={padL} y1={yOf(v)} x2={W - padR} y2={yOf(v)}
+              stroke={v === 0 ? 'var(--border)' : 'var(--border)'}
+              strokeWidth={v === 0 ? 1 : 0.75}
+              strokeDasharray={v === 0 || v === 100 ? 'none' : '5 5'}
+              opacity={v === 0 ? 1 : 0.6}
+            />
+            <text x={padL - 8} y={yOf(v) + 4} textAnchor="end" fontSize="10" fill="var(--text-muted)" fontFamily="inherit">
+              {v}%
+            </text>
           </g>
         ))}
-        {/* Area fill */}
-        <polygon points={area} fill={lineColor} fillOpacity="0.08" />
-        {/* Line */}
-        <polyline points={polyline} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
-        {/* Points + tooltips */}
+
+        {/* Gradient area */}
+        <path d={areaPath} fill={`url(#${gradId})`} />
+
+        {/* Smooth line */}
+        <path d={curvePath} fill="none" stroke={lineColor} strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round" />
+
+        {/* Dots */}
         {pts.map(([x, y], i) => (
-          <g key={i}>
-            <circle cx={x} cy={y} r="5" fill={lineColor} stroke="#fff" strokeWidth="2" />
+          <g key={i} className="trend-dot-group">
+            <circle cx={x} cy={y} r="6" fill="transparent" />
+            <circle cx={x} cy={y} r="4" fill={lineColor} stroke="#fff" strokeWidth="2" />
             <title>{points[i].label}: {points[i].rate}%</title>
           </g>
         ))}
-        {/* X labels — show up to 8, skip middle ones if too many */}
+
+        {/* X-axis labels */}
         {points.map((p, i) => {
-          const skip = points.length > 8 && i > 0 && i < points.length - 1 && i % Math.ceil(points.length / 6) !== 0
-          if (skip) return null
+          if (i !== 0 && i !== n - 1 && i % labelStep !== 0) return null
           return (
-            <text key={i} x={pts[i][0]} y={H - 4} textAnchor="middle" fontSize="9" fill="var(--text-muted)">
-              {p.label.length > 10 ? p.label.slice(0, 10) + '…' : p.label}
+            <text
+              key={i}
+              x={pts[i][0]} y={H - 6}
+              textAnchor="middle" fontSize="10" fill="var(--text-muted)" fontFamily="inherit"
+            >
+              {p.label.length > 12 ? p.label.slice(0, 11) + '…' : p.label}
             </text>
           )
         })}
       </svg>
-      <div className="trend-chart-legend">
-        <span style={{ color: lineColor, fontWeight: 700, fontSize: '20px' }}>{latest}%</span>
-        <span style={{ color: netDelta >= 0 ? '#10b981' : '#ef4444', fontSize: '13px' }}>
-          {netDelta >= 0 ? '↑' : '↓'}{Math.abs(netDelta)}% since first run
-        </span>
-        <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{points.length} runs tracked</span>
+
+      {/* Summary stats */}
+      <div className="trend-chart-stats">
+        <div className="trend-stat">
+          <span className="trend-stat-label">Latest</span>
+          <strong className="trend-stat-value" style={{ color: lineColor }}>{latest}%</strong>
+        </div>
+        <div className="trend-stat-divider" />
+        <div className="trend-stat">
+          <span className="trend-stat-label">Change</span>
+          <strong className="trend-stat-value" style={{ color: netDelta > 0 ? '#0b766d' : netDelta < 0 ? '#ef4444' : 'var(--text-muted)' }}>
+            {netDelta > 0 ? '↑' : netDelta < 0 ? '↓' : '—'}{netDelta !== 0 ? Math.abs(netDelta) + '%' : ''}
+          </strong>
+        </div>
+        <div className="trend-stat-divider" />
+        <div className="trend-stat">
+          <span className="trend-stat-label">Best</span>
+          <strong className="trend-stat-value" style={{ color: '#0b766d' }}>{highest}%</strong>
+        </div>
+        <div className="trend-stat-divider" />
+        <div className="trend-stat">
+          <span className="trend-stat-label">Lowest</span>
+          <strong className="trend-stat-value" style={{ color: '#ef4444' }}>{lowest}%</strong>
+        </div>
+        <div className="trend-stat-divider" />
+        <div className="trend-stat">
+          <span className="trend-stat-label">Runs</span>
+          <strong className="trend-stat-value">{n}</strong>
+        </div>
       </div>
     </div>
   )
