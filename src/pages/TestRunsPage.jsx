@@ -244,6 +244,7 @@ export function TestRunsPage() {
   const [runSearch, setRunSearch] = useState('')
   const [casePageSize, setCasePageSize] = useState(25)
   const [casePage, setCasePage] = useState(1)
+  const [caseModuleFilter, setCaseModuleFilter] = useState('')
 
   const sortedTestCases = useMemo(
     () => [...testCases].sort((a, b) => {
@@ -294,13 +295,22 @@ export function TestRunsPage() {
   const runsStartItem = totalRuns === 0 ? 0 : runsStartIndex + 1
   const runsEndItem = Math.min(runsStartIndex + runsPageSize, totalRuns)
 
+  const availableModules = useMemo(
+    () => [...new Set(testCases.map((tc) => tc.module).filter(Boolean))].sort(),
+    [testCases],
+  )
+
   // Case-picker pagination (run setup). Selection (Select all / Clear / checked
   // ids) still operates on the full list, not just the visible page.
-  const caseTotal = sortedTestCases.length
+  const moduleFilteredCases = useMemo(
+    () => caseModuleFilter ? sortedTestCases.filter((tc) => tc.module === caseModuleFilter) : sortedTestCases,
+    [sortedTestCases, caseModuleFilter],
+  )
+  const caseTotal = moduleFilteredCases.length
   const caseTotalPages = Math.max(1, Math.ceil(caseTotal / casePageSize))
   const caseCurrentPage = Math.min(casePage, caseTotalPages)
   const caseStartIndex = (caseCurrentPage - 1) * casePageSize
-  const paginatedCases = sortedTestCases.slice(caseStartIndex, caseStartIndex + casePageSize)
+  const paginatedCases = moduleFilteredCases.slice(caseStartIndex, caseStartIndex + casePageSize)
   const caseStartItem = caseTotal === 0 ? 0 : caseStartIndex + 1
   const caseEndItem = Math.min(caseStartIndex + casePageSize, caseTotal)
   const completedCount = selectedCases.filter((tc) => {
@@ -817,6 +827,44 @@ export function TestRunsPage() {
               </button>
             </div>
           </div>
+
+          {availableModules.length > 0 && (
+            <div className="run-module-filter-bar">
+              <select
+                value={caseModuleFilter}
+                onChange={(e) => { setCaseModuleFilter(e.target.value); setCasePage(1) }}
+                aria-label="Filter cases by module"
+                className={caseModuleFilter ? 'filter-active' : ''}
+              >
+                <option value="">All modules</option>
+                {availableModules.map((m) => <option key={m} value={m}>{m}</option>)}
+              </select>
+              {caseModuleFilter && (
+                <>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      const moduleIds = testCases.filter((tc) => tc.module === caseModuleFilter).map((tc) => tc.id)
+                      setSelectedIds((prev) => [...new Set([...prev, ...moduleIds])])
+                    }}
+                  >
+                    Select all in module
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      const moduleIds = new Set(testCases.filter((tc) => tc.module === caseModuleFilter).map((tc) => tc.id))
+                      setSelectedIds((prev) => prev.filter((id) => !moduleIds.has(id)))
+                    }}
+                  >
+                    Deselect module
+                  </button>
+                </>
+              )}
+            </div>
+          )}
 
           {testCases.length === 0 ? (
             <div className="empty-table-row">No test cases available for this project.</div>
