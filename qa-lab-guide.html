@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>QA Lab — User Guide</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --teal: #0b766d;
+    --teal-dark: #075f58;
+    --teal-light: #e3f1ef;
+    --teal-mid: #c6e4e0;
+    --text: #17201f;
+    --text-muted: #4a5a58;
+    --text-soft: #7a8c8a;
+    --border: #e2e8e6;
+    --bg: #f6f7f8;
+    --white: #ffffff;
+    --red: #a93030;
+    --red-bg: #fef0f0;
+    --amber: #8a5a00;
+    --amber-bg: #fef8ec;
+    --green: #1a6b37;
+    --green-bg: #e9f7ee;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--text);
+    background: #fff;
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  /* ── PAGE SETUP ── */
+  @page {
+    size: A4;
+    margin: 0;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 0;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .page:last-child { page-break-after: avoid; }
+
+  /* ── COVER PAGE ── */
+  .cover {
+    background: linear-gradient(145deg, #0b766d 0%, #075f58 50%, #053d38 100%);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 60px 60px 80px;
+    position: relative;
+  }
+
+  .cover::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+      radial-gradient(ellipse at 20% 20%, rgba(255,255,255,0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 80%, rgba(255,255,255,0.04) 0%, transparent 50%);
+    pointer-events: none;
+  }
+
+  .cover-logo {
+    width: 72px;
+    height: 72px;
+    background: rgba(255,255,255,0.18);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 28px;
+    border: 1.5px solid rgba(255,255,255,0.3);
+    backdrop-filter: blur(4px);
+  }
+
+  .cover-logo svg { width: 36px; height: 36px; }
+
+  .cover-badge {
+    background: rgba(255,255,255,0.15);
+    border: 1px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.9);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 999px;
+    margin-bottom: 20px;
+  }
+
+  .cover h1 {
+    font-size: 52px;
+    font-weight: 900;
+    letter-spacing: -0.04em;
+    line-height: 1.1;
+    margin-bottom: 8px;
+    color: white;
+  }
+
+  .cover h1 span {
+    color: rgba(255,255,255,0.55);
+  }
+
+  .cover-subtitle {
+    font-size: 18px;
+    color: rgba(255,255,255,0.75);
+    font-weight: 400;
+    margin-bottom: 56px;
+    max-width: 400px;
+    line-height: 1.5;
+  }
+
+  .cover-divider {
+    width: 60px;
+    height: 2px;
+    background: rgba(255,255,255,0.3);
+    margin: 0 auto 48px;
+  }
+
+  .cover-features {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    width: 100%;
+    max-width: 540px;
+  }
+
+  .cover-feature {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 12px;
+    padding: 16px 12px;
+    text-align: center;
+  }
+
+  .cover-feature-icon {
+    font-size: 22px;
+    margin-bottom: 8px;
+    display: block;
+  }
+
+  .cover-feature-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: rgba(255,255,255,0.85);
+    letter-spacing: 0.02em;
+  }
+
+  .cover-footer {
+    position: absolute;
+    bottom: 32px;
+    left: 0; right: 0;
+    text-align: center;
+    color: rgba(255,255,255,0.45);
+    font-size: 11px;
+  }
+
+  /* ── INNER PAGES ── */
+  .inner {
+    padding: 40px 50px 48px;
+    background: #fff;
+  }
+
+  .page-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 32px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid var(--teal-light);
+  }
+
+  .page-header-icon {
+    width: 36px; height: 36px;
+    background: var(--teal-light);
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .page-header-icon svg { width: 18px; height: 18px; color: var(--teal); }
+
+  .page-header h2 {
+    font-size: 22px;
+    font-weight: 800;
+    color: var(--text);
+    letter-spacing: -0.025em;
+  }
+
+  .page-header .section-num {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--teal);
+    background: var(--teal-light);
+    padding: 3px 10px;
+    border-radius: 999px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── SECTION BLOCKS ── */
+  .section { margin-bottom: 28px; }
+
+  .section h3 {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .section h3::before {
+    content: '';
+    display: inline-block;
+    width: 3px;
+    height: 14px;
+    background: var(--teal);
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .section p {
+    color: var(--text-muted);
+    line-height: 1.65;
+    margin-bottom: 10px;
+  }
+
+  /* ── CALLOUT BOXES ── */
+  .callout {
+    border-left: 3px solid var(--teal);
+    background: var(--teal-light);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin-bottom: 16px;
+    font-size: 12.5px;
+    color: var(--teal-dark);
+    line-height: 1.55;
+  }
+
+  .callout.tip { border-color: #1a6b37; background: #e9f7ee; color: #1a6b37; }
+  .callout.warn { border-color: #8a5a00; background: #fef8ec; color: #8a5a00; }
+
+  .callout strong { font-weight: 700; }
+
+  /* ── STEPS ── */
+  .steps { display: flex; flex-direction: column; gap: 10px; }
+
+  .step {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+  }
+
+  .step-num {
+    width: 26px; height: 26px;
+    background: var(--teal);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .step-body { flex: 1; }
+  .step-body strong { color: var(--text); font-weight: 600; }
+  .step-body p { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
+
+  /* ── FEATURE GRID ── */
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .feature-card {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    background: var(--bg);
+  }
+
+  .feature-card-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+  }
+
+  .feature-card-icon {
+    width: 28px; height: 28px;
+    background: var(--teal-light);
+    border-radius: 7px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .feature-card-icon svg { width: 14px; height: 14px; color: var(--teal); }
+
+  .feature-card h4 {
+    font-size: 12.5px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  .feature-card p {
+    font-size: 11.5px;
+    color: var(--text-muted);
+    line-height: 1.55;
+  }
+
+  /* ── STATUS BADGES ── */
+  .badge-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: 1px solid transparent;
+  }
+
+  .badge-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+  .badge-pass    { background: #e9f7ee; color: #1a6b37; border-color: #c4e8d0; }
+  .badge-fail    { background: #fef0f0; color: #a93030; border-color: #fecaca; }
+  .badge-block   { background: #fbe3e3; color: #7f1d1d; border-color: #e7a3a3; }
+  .badge-skip    { background: #f1f2f5; color: #4d5570; border-color: #d1d5db; }
+  .badge-ne      { background: #fef8ec; color: #8a5a00; border-color: #fde68a; }
+  .badge-open    { background: #fef0f0; color: #a93030; border-color: #fecaca; }
+  .badge-review  { background: #fef8ec; color: #8a5a00; border-color: #fde68a; }
+  .badge-closed  { background: #e9f7ee; color: #1a6b37; border-color: #c4e8d0; }
+  .badge-crit    { background: #fbe3e3; color: #7f1d1d; border-color: #e7a3a3; }
+  .badge-major   { background: #fef8ec; color: #8a5a00; border-color: #fde68a; }
+  .badge-minor   { background: #f1f2f5; color: #4d5570; border-color: #d1d5db; }
+
+  /* ── WORKFLOW DIAGRAM ── */
+  .workflow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    overflow: hidden;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    margin-bottom: 14px;
+  }
+
+  .wf-step {
+    flex: 1;
+    padding: 14px 10px;
+    text-align: center;
+    background: var(--bg);
+    position: relative;
+  }
+
+  .wf-step:not(:last-child)::after {
+    content: '→';
+    position: absolute;
+    right: -8px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--teal);
+    font-weight: 700;
+    font-size: 16px;
+    z-index: 1;
+  }
+
+  .wf-step:nth-child(odd) { background: var(--teal-light); }
+  .wf-step:nth-child(even) { background: #f0faf8; }
+
+  .wf-step-num {
+    width: 20px; height: 20px;
+    background: var(--teal);
+    color: white;
+    border-radius: 50%;
+    font-size: 10px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 6px;
+  }
+
+  .wf-step-label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: var(--teal-dark);
+    line-height: 1.3;
+  }
+
+  /* ── TWO COLUMN LAYOUT ── */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  /* ── TABLE ── */
+  .guide-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    margin-top: 10px;
+  }
+
+  .guide-table th {
+    background: var(--teal);
+    color: white;
+    padding: 9px 13px;
+    text-align: left;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+
+  .guide-table th:first-child { border-radius: 6px 0 0 0; }
+  .guide-table th:last-child  { border-radius: 0 6px 0 0; }
+
+  .guide-table td {
+    padding: 9px 13px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-muted);
+    vertical-align: top;
+  }
+
+  .guide-table tbody tr:nth-child(even) td { background: var(--bg); }
+  .guide-table tbody tr:last-child td { border-bottom: none; }
+  .guide-table td strong { color: var(--text); font-weight: 600; }
+
+  /* ── MINI TOPBAR MOCKUP ── */
+  .ui-mockup {
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+
+  .mock-topbar {
+    background: var(--teal);
+    padding: 10px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .mock-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: white;
+    font-weight: 700;
+    font-size: 13px;
+  }
+
+  .mock-brand-icon {
+    width: 22px; height: 22px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .mock-nav {
+    display: flex;
+    gap: 4px;
+    flex: 1;
+  }
+
+  .mock-nav-item {
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 11px;
+    color: rgba(255,255,255,0.7);
+    font-weight: 500;
+  }
+
+  .mock-nav-item.active {
+    background: rgba(255,255,255,0.2);
+    color: white;
+  }
+
+  .mock-body {
+    padding: 16px;
+    background: #fafbfc;
+  }
+
+  .mock-title {
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+
+  .mock-desc {
+    font-size: 11px;
+    color: var(--text-soft);
+    margin-bottom: 14px;
+  }
+
+  .mock-stat-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+    margin-bottom: 14px;
+  }
+
+  .mock-stat {
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+
+  .mock-stat-label {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--text-soft);
+    margin-bottom: 3px;
+  }
+
+  .mock-stat-value {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--teal);
+  }
+
+  .mock-stat-value.red { color: #a93030; }
+
+  /* ── SIDEBAR MOCKUP ── */
+  .mock-project-view {
+    display: flex;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    background: white;
+  }
+
+  .mock-sidebar {
+    width: 130px;
+    background: #fff;
+    border-right: 1px solid var(--border);
+    padding: 12px 8px;
+    flex-shrink: 0;
+  }
+
+  .mock-sidebar-label {
+    font-size: 8.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-soft);
+    padding: 0 6px;
+    margin-bottom: 4px;
+  }
+
+  .mock-sidebar-project {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+    padding: 0 6px;
+    margin-bottom: 10px;
+  }
+
+  .mock-sidebar-nav { display: flex; flex-direction: column; gap: 2px; }
+
+  .mock-sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 8px;
+    border-radius: 6px;
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  .mock-sidebar-item.active {
+    background: var(--teal-light);
+    color: var(--teal);
+    font-weight: 600;
+  }
+
+  .mock-sidebar-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    opacity: 0.5;
+    flex-shrink: 0;
+  }
+
+  .mock-sidebar-item.active .mock-sidebar-dot { opacity: 1; }
+
+  .mock-content { flex: 1; padding: 14px; background: #fafbfc; }
+
+  .mock-content-title {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 10px;
+  }
+
+  .mock-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 10px;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    margin-bottom: 6px;
+    font-size: 11px;
+  }
+
+  .mock-row-id { font-family: monospace; color: var(--text-soft); font-size: 10px; }
+  .mock-row-title { color: var(--teal); font-weight: 500; flex: 1; padding: 0 10px; }
+  .mock-row-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+  .pass-bg  { background: #e9f7ee; color: #1a6b37; }
+  .fail-bg  { background: #fef0f0; color: #a93030; }
+  .open-bg  { background: #fef0f0; color: #a93030; }
+  .med-bg   { background: #fef8ec; color: #8a5a00; }
+
+  /* ── TIPS LIST ── */
+  .tips { display: flex; flex-direction: column; gap: 8px; }
+
+  .tip-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px 14px;
+    border-radius: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+  }
+
+  .tip-icon {
+    font-size: 16px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .tip-item strong { color: var(--text); font-weight: 600; font-size: 12.5px; }
+  .tip-item p { color: var(--text-muted); font-size: 11.5px; margin-top: 2px; }
+
+  /* ── ROLE TABLE SPECIAL ── */
+  .role-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+
+  .role-lead   { background: #e3f1ef; color: #0b766d; }
+  .role-tester { background: #e0effe; color: #1d4ed8; }
+  .role-viewer { background: #f1f2f5; color: #4d5570; }
+
+  /* ── PAGE FOOTER ── */
+  .page-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 50px;
+    border-top: 1px solid var(--border);
+    background: #fafbfc;
+    font-size: 10px;
+    color: var(--text-soft);
+  }
+
+  .page-foot-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 700;
+    color: var(--teal);
+  }
+
+  /* ── PRINT ── */
+  @media print {
+    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .page { page-break-after: always; }
+    .page:last-child { page-break-after: avoid; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     PAGE 1 — COVER
+════════════════════════════════════════════════════ -->
+<div class="page cover">
+  <div class="cover-logo">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <path d="m9 11 2 2 4-4"/>
+    </svg>
+  </div>
+
+  <div class="cover-badge">User Guide</div>
+
+  <h1>QA <span>Lab</span></h1>
+  <p class="cover-subtitle">The complete guide to managing your QA testing workflow — from test cases to bug tracking and reports.</p>
+
+  <div class="cover-divider"></div>
+
+  <div class="cover-features">
+    <div class="cover-feature">
+      <span class="cover-feature-icon">📋</span>
+      <div class="cover-feature-label">Test Cases</div>
+    </div>
+    <div class="cover-feature">
+      <span class="cover-feature-icon">🐛</span>
+      <div class="cover-feature-label">Bug Tracker</div>
+    </div>
+    <div class="cover-feature">
+      <span class="cover-feature-icon">▶️</span>
+      <div class="cover-feature-label">Test Runs</div>
+    </div>
+    <div class="cover-feature">
+      <span class="cover-feature-icon">📊</span>
+      <div class="cover-feature-label">Reports</div>
+    </div>
+    <div class="cover-feature">
+      <span class="cover-feature-icon">✅</span>
+      <div class="cover-feature-label">Requirements</div>
+    </div>
+    <div class="cover-feature">
+      <span class="cover-feature-icon">👥</span>
+      <div class="cover-feature-label">Team Roles</div>
+    </div>
+  </div>
+
+  <div class="cover-footer">QA Lab — Professional QA Test Management Platform</div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     PAGE 2 — OVERVIEW & GETTING STARTED
+════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="page-header">
+    <div class="page-header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+    </div>
+    <h2>What is QA Lab?</h2>
+    <span class="section-num">01</span>
+  </div>
+
+  <div class="section">
+    <p>QA Lab is a <strong>collaborative test management platform</strong> built for QA teams of all sizes. It helps you plan, run, and track software testing — all in one place with real-time sync so your entire team stays on the same page.</p>
+  </div>
+
+  <!-- Dashboard mockup -->
+  <div class="ui-mockup">
+    <div class="mock-topbar">
+      <div class="mock-brand">
+        <div class="mock-brand-icon">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 11 2 2 4-4"/></svg>
+        </div>
+        QA Lab
+      </div>
+      <div class="mock-nav">
+        <div class="mock-nav-item active">Dashboard</div>
+        <div class="mock-nav-item">Projects</div>
+        <div class="mock-nav-item">Reports</div>
+        <div class="mock-nav-item">Activity</div>
+      </div>
+    </div>
+    <div class="mock-body">
+      <div class="mock-title">Good day, Team!</div>
+      <div class="mock-desc">Global testing health across all active QA projects.</div>
+      <div class="mock-stat-row">
+        <div class="mock-stat">
+          <div class="mock-stat-label">Projects</div>
+          <div class="mock-stat-value">4</div>
+        </div>
+        <div class="mock-stat">
+          <div class="mock-stat-label">Test Cases</div>
+          <div class="mock-stat-value">362</div>
+        </div>
+        <div class="mock-stat">
+          <div class="mock-stat-label">Bugs Open</div>
+          <div class="mock-stat-value red">18</div>
+        </div>
+        <div class="mock-stat">
+          <div class="mock-stat-label">Pass Rate</div>
+          <div class="mock-stat-value">86%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Key Capabilities</h3>
+    <div class="feature-grid">
+      <div class="feature-card">
+        <div class="feature-card-head">
+          <div class="feature-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h13M8 12h13M8 18h13M3 6l.8.8L5.5 5m-2.5 7 .8.8 1.7-1.8M3 18l.8.8 1.7-1.8"/></svg>
+          </div>
+          <h4>Test Cases</h4>
+        </div>
+        <p>Write, organise and assign test cases by module. Mark pass, fail, or blocker and attach evidence links.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-head">
+          <div class="feature-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 8a4 4 0 0 1 8 0v8a4 4 0 0 1-8 0Z"/><path d="M3 13h5M16 13h5"/></svg>
+          </div>
+          <h4>Bug Tracker</h4>
+        </div>
+        <p>Log defects with severity, priority and status. Link bugs to test cases and requirements. Track until closed.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-head">
+          <div class="feature-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 4v16M5 12l6-4v8Z"/><path d="M15 8h4M15 16h4"/></svg>
+          </div>
+          <h4>Test Runs</h4>
+        </div>
+        <p>Select test cases, start an execution cycle, update status in real time and save results for reporting.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-head">
+          <div class="feature-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M20 19H4M8 15v-4M13 15V8M18 15v-6"/></svg>
+          </div>
+          <h4>Reports & Dashboard</h4>
+        </div>
+        <p>Instant pass rate, open bug count, module coverage charts. Export or print for stakeholder reviews.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-head">
+          <div class="feature-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/><path d="m9 11 3 3L22 4"/></svg>
+          </div>
+          <h4>Requirements</h4>
+        </div>
+        <p>Track feature requirements and link them to test cases. See coverage percentage automatically.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-card-head">
+          <div class="feature-card-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <h4>Team Collaboration</h4>
+        </div>
+        <p>Invite team members, assign roles (QA Lead, Tester, Viewer), see who is active and what they are testing.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-foot">
+    <div class="page-foot-brand">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 11 2 2 4-4"/></svg>
+      QA Lab
+    </div>
+    <span>User Guide</span>
+    <span>Page 2</span>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     PAGE 3 — PROJECTS & TEST CASES
+════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="page-header">
+    <div class="page-header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7h6l2 2h10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/></svg>
+    </div>
+    <h2>Projects &amp; Test Cases</h2>
+    <span class="section-num">02</span>
+  </div>
+
+  <div class="section">
+    <h3>Creating a Project</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Go to Projects</strong>
+          <p>Click "Projects" in the top navigation bar, then click <strong>+ New project</strong>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Fill in project details</strong>
+          <p>Enter a project name and optional description. Click Create.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Open your project</strong>
+          <p>Click the project name to enter it. You will see the sidebar with all sections: Test cases, Requirements, Test runs, Test plans, Bug tracker, Reports, Settings.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sidebar mockup -->
+  <div class="mock-project-view">
+    <div class="mock-sidebar">
+      <div class="mock-sidebar-label">Project</div>
+      <div class="mock-sidebar-project">My App v2.0</div>
+      <div class="mock-sidebar-nav">
+        <div class="mock-sidebar-item active"><div class="mock-sidebar-dot"></div> Test cases</div>
+        <div class="mock-sidebar-item"><div class="mock-sidebar-dot"></div> Requirements</div>
+        <div class="mock-sidebar-item"><div class="mock-sidebar-dot"></div> Test runs</div>
+        <div class="mock-sidebar-item"><div class="mock-sidebar-dot"></div> Test plans</div>
+        <div class="mock-sidebar-item"><div class="mock-sidebar-dot"></div> Bug tracker</div>
+        <div class="mock-sidebar-item"><div class="mock-sidebar-dot"></div> Reports</div>
+        <div class="mock-sidebar-item"><div class="mock-sidebar-dot"></div> Settings</div>
+      </div>
+    </div>
+    <div class="mock-content">
+      <div class="mock-content-title">Test cases</div>
+      <div class="mock-row">
+        <span class="mock-row-id">TC-LO-001</span>
+        <span class="mock-row-title">Verify login with valid credentials</span>
+        <span class="mock-row-badge pass-bg">PASS</span>
+      </div>
+      <div class="mock-row">
+        <span class="mock-row-id">TC-LO-002</span>
+        <span class="mock-row-title">Verify login with wrong password</span>
+        <span class="mock-row-badge fail-bg">FAIL</span>
+      </div>
+      <div class="mock-row">
+        <span class="mock-row-id">TC-CH-001</span>
+        <span class="mock-row-title">Add item to cart and checkout</span>
+        <span class="mock-row-badge med-bg">NOT EXEC</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Writing Test Cases</h3>
+    <div class="callout">
+      <strong>Each test case gets an auto-assigned ID</strong> like <code style="font-family:monospace;background:rgba(0,0,0,0.08);padding:1px 5px;border-radius:3px;">TC-LO-001</code> — the prefix is derived from the Module name, so keep module names consistent.
+    </div>
+    <table class="guide-table">
+      <thead>
+        <tr>
+          <th>Field</th>
+          <th>What to fill in</th>
+          <th>Required?</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>Title</strong></td><td>Short description of what is being tested</td><td>Yes</td></tr>
+        <tr><td><strong>Module</strong></td><td>Feature area (e.g. Login, Checkout, Dashboard)</td><td>Yes</td></tr>
+        <tr><td><strong>Priority</strong></td><td>High / Med / Low — how critical is this test?</td><td>Yes</td></tr>
+        <tr><td><strong>Scenario</strong></td><td>Context or user story being verified</td><td>No</td></tr>
+        <tr><td><strong>Steps</strong></td><td>Step-by-step instructions for the tester</td><td>No</td></tr>
+        <tr><td><strong>Expected Result</strong></td><td>What should happen when steps are followed</td><td>Yes</td></tr>
+        <tr><td><strong>Tags</strong></td><td>Labels like "smoke test", "regression", "API"</td><td>No</td></tr>
+        <tr><td><strong>Assignee</strong></td><td>Team member responsible for this test</td><td>No</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Test Case Statuses</h3>
+    <div class="badge-row">
+      <div class="badge badge-ne"><div class="badge-dot" style="background:#8a5a00"></div>Not Executed</div>
+      <div class="badge badge-pass"><div class="badge-dot" style="background:#1a6b37"></div>Pass</div>
+      <div class="badge badge-fail"><div class="badge-dot" style="background:#a93030"></div>Fail</div>
+      <div class="badge badge-block"><div class="badge-dot" style="background:#7f1d1d"></div>Blocker</div>
+      <div class="badge badge-skip"><div class="badge-dot" style="background:#4d5570"></div>Skipped</div>
+    </div>
+    <div class="callout tip" style="margin-top:12px;">
+      <strong>Tip:</strong> When you change a test case status to <strong>Fail</strong>, QA Lab will automatically prompt you to log a bug linked to that test case — saving you the manual step.
+    </div>
+  </div>
+
+  <div class="page-foot">
+    <div class="page-foot-brand">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 11 2 2 4-4"/></svg>
+      QA Lab
+    </div>
+    <span>User Guide</span>
+    <span>Page 3</span>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     PAGE 4 — TEST RUNS
+════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="page-header">
+    <div class="page-header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4v16M5 12l6-4v8Z"/><path d="M15 8h4M15 16h4"/></svg>
+    </div>
+    <h2>Running Tests</h2>
+    <span class="section-num">03</span>
+  </div>
+
+  <div class="section">
+    <p>A <strong>Test Run</strong> is a session where you execute a set of test cases and record their outcomes. Each run is saved with full history so you can review pass rates over time.</p>
+  </div>
+
+  <!-- Workflow -->
+  <div class="section">
+    <h3>Test Run Workflow</h3>
+    <div class="workflow">
+      <div class="wf-step">
+        <div class="wf-step-num">1</div>
+        <div class="wf-step-label">Name the run</div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-step-num">2</div>
+        <div class="wf-step-label">Select test cases</div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-step-num">3</div>
+        <div class="wf-step-label">Start run</div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-step-num">4</div>
+        <div class="wf-step-label">Mark results</div>
+      </div>
+      <div class="wf-step">
+        <div class="wf-step-num">5</div>
+        <div class="wf-step-label">Save &amp; review</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Step-by-step: Starting a Test Run</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Go to Test runs</strong>
+          <p>Click "Test runs" in the project sidebar.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Give the run a name and build version</strong>
+          <p>Examples: "Sprint 12 regression", "v2.1 smoke test". Add the build number so results are traceable.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Select test cases</strong>
+          <p>Use filters (module, priority, tag) to narrow down cases. Click <strong>Select all</strong> or pick individually. Then click <strong>Start run</strong>.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Execute and mark status</strong>
+          <p>Work through each case. Click the status dropdown to set Pass, Fail, Blocker, Skip, etc. For failures, you can log a bug directly from the run screen.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">5</div>
+        <div class="step-body">
+          <strong>Save the run</strong>
+          <p>When complete, click <strong>Save run</strong>. Results are stored and visible in Reports and the project dashboard.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="section">
+      <h3>Status Options During a Run</h3>
+      <div class="badge-row" style="flex-direction:column; align-items:flex-start;">
+        <div class="badge badge-pass">Pass — works as expected</div>
+        <div class="badge badge-fail">Fail — defect found</div>
+        <div class="badge badge-block">Blocker — cannot proceed</div>
+        <div class="badge badge-skip">Skipped — not in scope</div>
+        <div class="badge badge-ne">Not Executed — pending</div>
+      </div>
+    </div>
+    <div class="section">
+      <h3>Tips for Test Runs</h3>
+      <div class="callout tip">
+        <strong>Assign a Test Plan</strong> to group runs by release or sprint milestone.
+      </div>
+      <div class="callout">
+        <strong>Drafts are saved automatically</strong> — if you close the browser mid-run, your progress is preserved.
+      </div>
+      <div class="callout warn">
+        Once a run is <strong>saved it cannot be edited</strong>. Review results before saving.
+      </div>
+    </div>
+  </div>
+
+  <div class="page-foot">
+    <div class="page-foot-brand">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 11 2 2 4-4"/></svg>
+      QA Lab
+    </div>
+    <span>User Guide</span>
+    <span>Page 4</span>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     PAGE 5 — BUG TRACKER
+════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="page-header">
+    <div class="page-header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 8a4 4 0 0 1 8 0v8a4 4 0 0 1-8 0Z"/><path d="M3 13h5M16 13h5"/></svg>
+    </div>
+    <h2>Bug Tracker</h2>
+    <span class="section-num">04</span>
+  </div>
+
+  <div class="section">
+    <p>The Bug Tracker is where all defects are logged, prioritised and tracked to resolution. Every bug gets an auto-assigned ID like <code style="font-family:monospace;background:#f1f2f5;padding:1px 5px;border-radius:3px;">BUG-LO-003</code> based on its module.</p>
+  </div>
+
+  <div class="section">
+    <h3>Logging a Bug</h3>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-body">
+          <strong>Click "+ Log bug"</strong>
+          <p>Open the Bug tracker from the sidebar and click the green button at the top right.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-body">
+          <strong>Fill in bug details</strong>
+          <p>Give a clear title, choose the module, and describe steps to reproduce, expected vs actual results.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-body">
+          <strong>Set Severity and Priority</strong>
+          <p>Severity is the impact of the bug. Priority is how urgently it needs to be fixed. These are independent — a cosmetic issue can be high priority for a release.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <div class="step-body">
+          <strong>Link to a test case (optional)</strong>
+          <p>If this bug was found during testing, link the relevant test case. This builds traceability.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="section">
+      <h3>Severity Levels</h3>
+      <table class="guide-table">
+        <thead><tr><th>Level</th><th>Meaning</th></tr></thead>
+        <tbody>
+          <tr><td><span class="badge badge-crit">Critical</span></td><td>System crash / data loss</td></tr>
+          <tr><td><span class="badge badge-major">Major</span></td><td>Key feature broken</td></tr>
+          <tr><td><span class="badge badge-minor">Minor</span></td><td>Minor issue, workaround exists</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section">
+      <h3>Bug Lifecycle</h3>
+      <div class="steps">
+        <div class="step">
+          <div class="step-num" style="background:#a93030">1</div>
+          <div class="step-body"><strong>Open</strong><p>Bug is newly logged, awaiting fix.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#8a5a00">2</div>
+          <div class="step-body"><strong>In Review</strong><p>Fix is being developed or verified.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num" style="background:#1a6b37">3</div>
+          <div class="step-body"><strong>Closed</strong><p>Fixed and confirmed by QA.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Bug Status Badges</h3>
+    <div class="badge-row">
+      <div class="badge badge-open">Open</div>
+      <div class="badge badge-review">In Review</div>
+      <div class="badge badge-closed">Closed</div>
+    </div>
+  </div>
+
+  <div class="callout tip">
+    <strong>Auto-bug from failed test:</strong> When you mark a test case as <strong>Fail</strong>, QA Lab immediately prompts you to log a bug — the module and linked test case are pre-filled automatically.
+  </div>
+
+  <div class="section" style="margin-top:16px;">
+    <h3>Filtering Bugs</h3>
+    <p>Use the toolbar filters to narrow by <strong>Severity</strong>, <strong>Status</strong>, <strong>Module</strong> or <strong>Tag</strong>. Active filters are highlighted in teal. Click "Clear filters" to reset.</p>
+  </div>
+
+  <div class="page-foot">
+    <div class="page-foot-brand">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 11 2 2 4-4"/></svg>
+      QA Lab
+    </div>
+    <span>User Guide</span>
+    <span>Page 5</span>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     PAGE 6 — REQUIREMENTS, REPORTS & TEAM
+════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="page-header">
+    <div class="page-header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19V5M20 19H4M8 15v-4M13 15V8M18 15v-6"/></svg>
+    </div>
+    <h2>Requirements, Reports &amp; Team</h2>
+    <span class="section-num">05</span>
+  </div>
+
+  <div class="two-col">
+    <div class="section">
+      <h3>Requirements &amp; Coverage</h3>
+      <p>Requirements track <strong>what the software must do</strong>. Linking test cases to requirements gives you automatic coverage visibility.</p>
+      <div class="steps" style="margin-top:8px;">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-body"><strong>Add a requirement</strong><p>Click "+ Add requirement" and describe the feature.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-body"><strong>Link test cases</strong><p>Open a requirement and attach the test cases that verify it.</p></div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-body"><strong>Track coverage</strong><p>QA Lab shows what % of requirements are covered and the pass rate per requirement.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h3>Test Plans &amp; Milestones</h3>
+      <p>Use <strong>Test Plans</strong> to group test runs by release cycle or sprint. Use <strong>Milestones</strong> to set deadlines and track overall progress.</p>
+      <div class="callout" style="margin-top:10px;">
+        <strong>Example:</strong> Create a Test Plan named "v3.0 Release" and assign all sprint runs to it. The plan automatically shows overall pass rate across all linked runs.
+      </div>
+      <div class="callout tip" style="margin-top:8px;">
+        <strong>Milestone progress</strong> updates automatically as linked runs complete — no manual tracking needed.
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Reports</h3>
+    <p>Each project has a <strong>Reports</strong> section with visual metrics. The global <strong>Reports</strong> page in the top bar shows summary data across all projects.</p>
+    <table class="guide-table">
+      <thead><tr><th>Report</th><th>What it shows</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Pass Rate</strong></td><td>% of test cases passing across all runs</td><td>Dashboard, Project Reports</td></tr>
+        <tr><td><strong>Bug Summary</strong></td><td>Open, In Review, Closed bug counts</td><td>Bug Tracker, Dashboard</td></tr>
+        <tr><td><strong>Module Coverage</strong></td><td>Test cases per module and their status breakdown</td><td>Project Reports</td></tr>
+        <tr><td><strong>Run History</strong></td><td>All past test runs with dates, names and pass rates</td><td>Test Runs page</td></tr>
+        <tr><td><strong>Activity Log</strong></td><td>Who did what and when — full audit trail</td><td>Activity (top nav)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <h3>Team Roles</h3>
+    <p>Workspace members have one of three roles that control what they can do:</p>
+    <table class="guide-table">
+      <thead><tr><th>Role</th><th>Can Do</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="role-pill role-lead">QA Lead</span></td>
+          <td>Full access — create/edit/delete projects, test cases, bugs, runs, members and settings</td>
+        </tr>
+        <tr>
+          <td><span class="role-pill role-tester">Tester</span></td>
+          <td>Add and update test cases, log bugs, run tests — cannot delete projects or manage team</td>
+        </tr>
+        <tr>
+          <td><span class="role-pill role-viewer">Viewer</span></td>
+          <td>Read-only access — can view all data but cannot make any changes</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="callout warn" style="margin-top:12px;">
+      <strong>Only a QA Lead</strong> can invite new members, change roles, or delete projects. Go to <strong>Settings → Team</strong> to manage your workspace.
+    </div>
+  </div>
+
+  <div class="page-foot">
+    <div class="page-foot-brand">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 11 2 2 4-4"/></svg>
+      QA Lab
+    </div>
+    <span>User Guide</span>
+    <span>Page 6</span>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════
+     PAGE 7 — TIPS & QUICK REFERENCE
+════════════════════════════════════════════════════ -->
+<div class="page inner">
+  <div class="page-header">
+    <div class="page-header-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>
+    </div>
+    <h2>Tips, Tags &amp; Quick Reference</h2>
+    <span class="section-num">06</span>
+  </div>
+
+  <div class="section">
+    <h3>Using Tags</h3>
+    <p>Tags are labels you can add to test cases and bugs to group them beyond modules. They're great for marking test types like <em>smoke test</em>, <em>regression</em>, <em>API</em>, or feature flags like <em>v3-feature</em>.</p>
+    <div class="callout">
+      <strong>How to add a tag:</strong> In the test case or bug form, click the Tags field and type a label, then press <strong>Enter</strong> or <strong>,</strong> (comma) to add it. You can add multiple tags. Existing tags are suggested as you type.
+    </div>
+    <div class="callout tip" style="margin-top:8px;">
+      <strong>To filter by tag:</strong> Use the Tag dropdown in the toolbar on the Test cases or Bug tracker page. Click any tag chip in the table to instantly filter to that tag.
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Pro Tips</h3>
+    <div class="tips">
+      <div class="tip-item">
+        <div class="tip-icon">⚡</div>
+        <div>
+          <strong>Bulk status updates</strong>
+          <p>Select multiple test cases using the checkboxes, then use the bulk status bar that appears to set all of them to Pass or Fail in one click.</p>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-icon">📋</div>
+        <div>
+          <strong>Shared Steps Library</strong>
+          <p>Save repeated step sequences (like "Log in as admin") as a Shared Step group. Reuse them across test cases so you only need to update them once.</p>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-icon">📤</div>
+        <div>
+          <strong>Bulk upload test cases</strong>
+          <p>Go to Test cases → Bulk upload. Download the CSV template, fill it in with your team, then upload all cases at once — no manual entry needed.</p>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-icon">📥</div>
+        <div>
+          <strong>Import JUnit XML</strong>
+          <p>If your team runs automated tests, go to Test runs → Import JUnit XML to bring automation results directly into QA Lab without manual entry.</p>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-icon">🔁</div>
+        <div>
+          <strong>Clone a test case</strong>
+          <p>Click the copy icon on any test case row to create a duplicate. Useful when tests are similar with small variations.</p>
+        </div>
+      </div>
+      <div class="tip-item">
+        <div class="tip-icon">🗄️</div>
+        <div>
+          <strong>Backup your data</strong>
+          <p>Go to <strong>Backup</strong> in the top navigation to download a full JSON export of all your workspace data. Store it somewhere safe.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>Quick Reference — ID Formats</h3>
+    <table class="guide-table">
+      <thead><tr><th>ID Format</th><th>Meaning</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><code style="font-family:monospace">TC-XX-NNN</code></td>
+          <td>Test Case — XX is module prefix, NNN is sequence</td>
+          <td><code style="font-family:monospace">TC-LO-001</code> = Login module, case #1</td>
+        </tr>
+        <tr>
+          <td><code style="font-family:monospace">BUG-XX-NNN</code></td>
+          <td>Bug — same pattern as test cases</td>
+          <td><code style="font-family:monospace">BUG-CH-003</code> = Checkout module, bug #3</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="callout" style="margin-top:10px;">
+      IDs are assigned <strong>automatically</strong> when you save. The module prefix is the first 2 letters of the module name. You do not need to type IDs manually.
+    </div>
+  </div>
+
+  <div class="page-foot">
+    <div class="page-foot-brand">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 11 2 2 4-4"/></svg>
+      QA Lab
+    </div>
+    <span>User Guide</span>
+    <span>Page 7</span>
+  </div>
+</div>
+
+</body>
+</html>

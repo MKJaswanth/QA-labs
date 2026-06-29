@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef, useId } from 'react'
 import { XIcon } from './Icons'
 
-export function Modal({ title, onClose, children, style, closeOnBackdrop = true }) {
+export function Modal({ title, onClose, children, style, closeOnBackdrop = false }) {
   const [highlight, setHighlight] = useState(false)
   const titleId = useId()
   const timerRef = useRef(null)
@@ -25,7 +25,7 @@ export function Modal({ title, onClose, children, style, closeOnBackdrop = true 
       timerRef.current = setTimeout(() => {
         setHighlight(false)
         timerRef.current = null
-      }, 1000)
+      }, 900)
     }
   }
 

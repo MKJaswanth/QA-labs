@@ -8,6 +8,9 @@ import { useProjects } from '../hooks/useProjects'
 import { useTeamMembers } from '../hooks/useTeamMembers'
 import { useActivity } from '../hooks/useActivity'
 import { useUserRole } from '../hooks/useUserRole'
+import { useTestCases } from '../hooks/useTestCases'
+import { useBugs } from '../hooks/useBugs'
+import { useTestRuns } from '../hooks/useTestRuns'
 import { getJiraSettings, saveJiraSettings } from '../utils/storage'
 import { isFirebaseEnabled } from '../utils/firebase'
 import { getOrCreateProjectInviteToken, revokeProjectInviteToken } from '../utils/remoteStorage'
@@ -16,6 +19,9 @@ export function SettingsPage() {
   const { projectId } = useParams()
   const { projects, updateProject, removeProject } = useProjects()
   const { members, addMember, updateMember } = useTeamMembers()
+  const { testCases } = useTestCases(projectId)
+  const { bugs } = useBugs(projectId)
+  const { runs } = useTestRuns(projectId)
   const { getActivitiesByProject } = useActivity()
   const { isLead } = useUserRole()
   const navigate = useNavigate()
@@ -110,9 +116,17 @@ export function SettingsPage() {
   }
 
   const handleDelete = async () => {
+    const tcCount = testCases.length
+    const bugCount = bugs.length
+    const runCount = runs.length
     const ok = await confirm({
       title: 'Delete project?',
-      message: `All test cases, bugs, and runs in "${project.name}" will be permanently deleted and cannot be recovered.`,
+      message: `All data in "${project.name}" will be permanently deleted and cannot be recovered.`,
+      details: [
+        `${tcCount} test case${tcCount !== 1 ? 's' : ''}`,
+        `${bugCount} bug${bugCount !== 1 ? 's' : ''}`,
+        `${runCount} test run${runCount !== 1 ? 's' : ''}`,
+      ],
       confirmLabel: 'Delete project',
       danger: true,
       requireText: project.name,

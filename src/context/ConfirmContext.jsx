@@ -6,9 +6,9 @@ export function ConfirmProvider({ children }) {
   const [state, setState] = useState(null)
   const [typedText, setTypedText] = useState('')
 
-  const confirm = useCallback(({ title, message, confirmLabel = 'Confirm', danger = false, requireText = null }) => {
+  const confirm = useCallback(({ title, message, confirmLabel = 'Confirm', danger = false, requireText = null, details = null }) => {
     return new Promise((resolve) => {
-      setState({ title, message, confirmLabel, danger, requireText, resolve })
+      setState({ title, message, confirmLabel, danger, requireText, details, resolve })
       setTypedText('')
     })
   }, [])
@@ -32,7 +32,14 @@ export function ConfirmProvider({ children }) {
       {children}
       {state && (
         <Modal title={state.title} onClose={handleCancel} style={{ maxWidth: 420 }}>
-          <p className="confirm-message">{state.message}</p>
+          <div className="confirm-body">
+            <p className="confirm-message">{state.message}</p>
+            {state.details && (
+              <ul className="confirm-details">
+                {state.details.map((d, i) => <li key={i}>{d}</li>)}
+              </ul>
+            )}
+          </div>
           {state.requireText && (
             <label className="confirm-type-label">
               Type <strong>{state.requireText}</strong> to confirm

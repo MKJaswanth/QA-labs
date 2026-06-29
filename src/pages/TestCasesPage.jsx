@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useCallback } from 'react'
 import { UploadIcon, DownloadIcon, PencilIcon, CopyIcon, XIcon, ChevronLeftIcon, ChevronRightIcon, SortAscIcon, SortDescIcon, SortNoneIcon, ArrowRightIcon } from '../components/Icons'
 import { useSortable } from '../hooks/useSortable'
 import { Link, useParams, useSearchParams } from 'react-router-dom'
@@ -16,6 +16,7 @@ import { useProjects } from '../hooks/useProjects'
 import { useUser } from '../context/UserContext'
 import { useSharedSteps } from '../hooks/useSharedSteps'
 import { useUserRole } from '../hooks/useUserRole'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { describeTestCaseChanges, historyEntry, withHistory } from '../utils/history'
 import { STATUS_TONE, TEST_STATUSES, normalizeTestStatus } from '../utils/status'
 import { exportTestCases } from '../utils/export'
@@ -82,6 +83,26 @@ export function TestCasesPage() {
   const [editSharedGroup, setEditSharedGroup] = useState(null)
   const [sharedForm, setSharedForm] = useState({ name: '', description: '', steps: [''] })
   const [sharedSearch, setSharedSearch] = useState('')
+
+  const openAddModal = useCallback(() => {
+    setEditTc(null)
+    setForm(blankForm())
+    setShowAdd(true)
+  }, [])
+
+  const handleEscape = useCallback(() => {
+    if (showAdd) {
+      setShowAdd(false)
+      setEditTc(null)
+      setForm(blankForm())
+    }
+  }, [showAdd])
+
+  useKeyboardShortcuts({
+    openAdd: openAddModal,
+    onSave: null,
+    onEscape: handleEscape,
+  })
 
   const handleSaveSharedGroup = async (e) => {
     e.preventDefault()
@@ -271,9 +292,15 @@ export function TestCasesPage() {
 
   const handleBulkDelete = async () => {
     if (selectedIds.length === 0) return
+    const selectedCases = testCases.filter((tc) => selectedIds.includes(tc.id))
+    const sampleTitles = selectedCases.slice(0, 3).map((tc) => tc.title)
     const ok = await confirm({
       title: 'Delete selected test cases?',
-      message: `Are you sure you want to permanently remove the ${selectedIds.length} selected test cases? This action cannot be undone.`,
+      message: `Permanently remove ${selectedIds.length} test case${selectedIds.length !== 1 ? 's' : ''}? This action cannot be undone.`,
+      details: [
+        ...sampleTitles,
+        selectedIds.length > 3 ? `...and ${selectedIds.length - 3} more` : null,
+      ].filter(Boolean),
       confirmLabel: 'Delete',
       danger: true,
     })

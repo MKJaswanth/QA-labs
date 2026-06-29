@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { EvidenceLinksField } from '../components/EvidenceLinksField'
 import { XIcon, ChevronLeftIcon, ChevronRightIcon, SortAscIcon, SortDescIcon, SortNoneIcon } from '../components/Icons'
 import { useParams, useSearchParams } from 'react-router-dom'
@@ -16,10 +16,12 @@ import { useRequirements } from '../hooks/useRequirements'
 import { useActivity } from '../hooks/useActivity'
 import { useSortable } from '../hooks/useSortable'
 import { newId } from '../utils/id'
-import { downloadBugTemplate, getReporterName } from '../utils/export'
+import { downloadBugTemplate, getReporterName, exportBugs } from '../utils/export'
 import { BugBulkUploadModal } from '../components/BugBulkUploadModal'
 import { DownloadIcon, UploadIcon } from '../components/Icons'
 import { useUserRole } from '../hooks/useUserRole'
+import { useProjects } from '../hooks/useProjects'
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts'
 import { bugMatchesSearch } from '../utils/entitySearch'
 import { getJiraSettings } from '../utils/storage'
 
@@ -279,6 +281,8 @@ export function BugTrackerPage() {
   const { requirements } = useRequirements(projectId)
   const { members } = useTeamMembers()
   const { getActivitiesByEntity } = useActivity()
+  const { projects } = useProjects()
+  const projectName = projects.find((p) => p.id === projectId)?.name ?? projectId
   const confirm = useConfirm()
   const toast = useToast()
 
@@ -295,6 +299,25 @@ export function BugTrackerPage() {
   const [pageSize, setPageSize] = useState(10)
   const [page, setPage] = useState(1)
   const { sorted: sortedBugs, sortKey: bugSortKey, sortDir: bugSortDir, toggle: bugToggle } = useSortable(bugs)
+
+  const openAddModal = useCallback(() => {
+    setForm({ ...blank(), reportedBy: user })
+    setShowAdd(true)
+  }, [user])
+
+  const handleEscape = useCallback(() => {
+    if (showAdd) {
+      setShowAdd(false)
+      setEditing(null)
+      setForm(blank())
+    }
+  }, [showAdd])
+
+  useKeyboardShortcuts({
+    openAdd: openAddModal,
+    onSave: null,
+    onEscape: handleEscape,
+  })
 
   const openAdd = () => {
     setForm({ ...blank(), reportedBy: user })
@@ -466,6 +489,9 @@ export function BugTrackerPage() {
         description="Track defects by severity, status, and linked test case."
         action={
           <div className="page-actions-row">
+            <button className="secondary-button" type="button" onClick={() => exportBugs(bugs, projectName)}>
+              <DownloadIcon width={14} height={14} /> Export CSV
+            </button>
             <button className="secondary-button" type="button" onClick={downloadBugTemplate}>
               <DownloadIcon width={14} height={14} /> Bug template
             </button>

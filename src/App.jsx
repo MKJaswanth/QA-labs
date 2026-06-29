@@ -3,6 +3,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { Layout } from './components/Layout'
 import { WorkspaceGate } from './components/WorkspaceGate'
+import { OnboardingWizard } from './components/OnboardingWizard'
 import { AuthProvider } from './context/AuthContext'
 import { WorkspaceSyncProvider } from './context/WorkspaceSyncContext'
 import { useAuth } from './context/useAuth'
@@ -10,6 +11,7 @@ import { ConfirmProvider } from './context/ConfirmContext'
 import { ToastProvider } from './context/ToastContext'
 import { UserContext } from './context/UserContext'
 import { useCurrentUser } from './hooks/useCurrentUser'
+import { useProjects } from './hooks/useProjects'
 import { isFirebaseEnabled } from './utils/firebase'
 // AuthPage & LandingPage are eagerly loaded — they render outside the
 // router/Suspense boundary (before the user is authenticated).
@@ -111,7 +113,12 @@ const appRoutes = (
 function AppShell() {
   const { user, updateUser } = useCurrentUser()
   const { firebaseUser, loading } = useAuth()
+  const { projects } = useProjects()
   const [showAuth, setShowAuth] = useState(false)
+  // Show onboarding for new workspaces with no projects (check once on mount)
+  const [showOnboarding, setShowOnboarding] = useState(
+    () => projects.length === 0 && !localStorage.getItem('qa_onboarding_dismissed')
+  )
 
   // Track if user was previously signed out
   const wasSignedOutRef = useRef(false)
@@ -198,6 +205,12 @@ function AppShell() {
               </Layout>
             </ErrorBoundary>
           </HashRouter>
+          {showOnboarding && (
+            <OnboardingWizard onComplete={() => {
+              setShowOnboarding(false)
+              localStorage.setItem('qa_onboarding_dismissed', '1')
+            }} />
+          )}
         </WorkspaceGate>
       </WorkspaceSyncProvider>
     </UserContext.Provider>

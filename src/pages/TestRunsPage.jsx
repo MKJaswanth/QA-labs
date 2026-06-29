@@ -654,9 +654,16 @@ export function TestRunsPage() {
   // ── Draft: discard ─────────────────────────────────────────────────────────
   const discardDraft = async () => {
     if (!activeDraft) return
+    const executedCount = activeDraft.cases?.filter((c) => c.status && c.status !== 'Not Executed').length || 0
+    const totalCount = activeDraft.cases?.length || 0
     const ok = await confirm({
       title: 'Discard draft?',
       message: 'The saved progress for this test run will be permanently deleted.',
+      details: [
+        `Run: ${activeDraft.name || 'Unnamed'}`,
+        `${executedCount} of ${totalCount} cases executed`,
+        activeDraft.build ? `Build: ${activeDraft.build}` : null,
+      ].filter(Boolean),
       confirmLabel: 'Discard',
       danger: true,
     })
