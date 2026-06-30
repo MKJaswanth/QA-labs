@@ -28,7 +28,6 @@ function StatCard({ label, value, sub, tone }) {
 function NavIcon({ children }) {
   return (
     <svg
-      className="proj-qnav-icon"
       width="20" height="20"
       viewBox="0 0 24 24"
       fill="none"
@@ -43,12 +42,19 @@ function NavIcon({ children }) {
   )
 }
 
-function QuickNavCard({ to, icon, label, count }) {
+function QuickNavCard({ to, icon, label, count, desc }) {
   return (
     <Link to={to} className="proj-qnav-card">
-      <NavIcon>{icon}</NavIcon>
-      <span className="proj-qnav-label">{label}</span>
-      {count != null && <span className="proj-qnav-count">{count}</span>}
+      <div className="proj-qnav-icon-box">
+        <NavIcon>{icon}</NavIcon>
+      </div>
+      <div className="proj-qnav-body">
+        <div className="proj-qnav-top">
+          <span className="proj-qnav-label">{label}</span>
+          {count != null && <span className="proj-qnav-badge">{count}</span>}
+        </div>
+        {desc && <span className="proj-qnav-desc">{desc}</span>}
+      </div>
     </Link>
   )
 }
@@ -126,6 +132,51 @@ export function ProjectDashboardPage() {
           </div>
         }
       />
+
+      {/* Quick navigation */}
+      <div className="proj-qnav-grid">
+        <QuickNavCard
+          to={`${base}/test-cases`}
+          label="Test cases"
+          count={testCases.length}
+          desc="Write and organize test cases"
+          icon={<><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><path d="m3 6 .8.8L5.5 5" /><path d="m3 12 .8.8 1.7-1.8" /><path d="m3 18 .8.8 1.7-1.8" /></>}
+        />
+        <QuickNavCard
+          to={`${base}/requirements`}
+          label="Requirements"
+          count={requirements.length}
+          desc="Track coverage by requirement"
+          icon={<><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /><path d="m9 11 3 3L22 4" /></>}
+        />
+        <QuickNavCard
+          to={`${base}/test-runs`}
+          label="Test runs"
+          count={runs.length}
+          desc="Execute and monitor testing"
+          icon={<><path d="M5 4v16" /><path d="m5 12 6-4v8Z" /><path d="M15 8h4" /><path d="M15 16h4" /></>}
+        />
+        <QuickNavCard
+          to={`${base}/test-plans`}
+          label="Plans & milestones"
+          count={plans.length + milestones.length}
+          desc="Track release milestones"
+          icon={<><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6" /><path d="M9 16h6" /></>}
+        />
+        <QuickNavCard
+          to={`${base}/bugs`}
+          label="Bug tracker"
+          count={stats.openBugs}
+          desc={stats.openBugs > 0 ? `${stats.openBugs} open bug${stats.openBugs !== 1 ? 's' : ''}` : 'Log and triage defects'}
+          icon={<><path d="M8 8a4 4 0 0 1 8 0v8a4 4 0 0 1-8 0Z" /><path d="M3 13h5" /><path d="M16 13h5" /><path d="M4 20l4-3" /><path d="m16 17 4 3" /><path d="M9 4 7 2" /><path d="m15 4 2-2" /></>}
+        />
+        <QuickNavCard
+          to={`${base}/reports`}
+          label="Reports"
+          desc="View metrics and trends"
+          icon={<><path d="M4 19V5" /><path d="M20 19H4" /><path d="M8 15v-4" /><path d="M13 15V8" /><path d="M18 15v-6" /></>}
+        />
+      </div>
 
       {/* Stats strip */}
       <div className="proj-stats-strip">
@@ -343,47 +394,6 @@ export function ProjectDashboardPage() {
         </div>
       </div>
 
-      {/* Quick navigation */}
-      <section className="proj-qnav-section">
-        <h3 className="proj-qnav-heading">Quick navigation</h3>
-        <div className="proj-qnav-grid">
-          <QuickNavCard
-            to={`${base}/test-cases`}
-            label="Test cases"
-            count={testCases.length}
-            icon={<><path d="M8 6h13" /><path d="M8 12h13" /><path d="M8 18h13" /><path d="m3 6 .8.8L5.5 5" /><path d="m3 12 .8.8 1.7-1.8" /><path d="m3 18 .8.8 1.7-1.8" /></>}
-          />
-          <QuickNavCard
-            to={`${base}/requirements`}
-            label="Requirements"
-            count={requirements.length}
-            icon={<><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" /><path d="m9 11 3 3L22 4" /></>}
-          />
-          <QuickNavCard
-            to={`${base}/test-runs`}
-            label="Test runs"
-            count={runs.length}
-            icon={<><path d="M5 4v16" /><path d="m5 12 6-4v8Z" /><path d="M15 8h4" /><path d="M15 16h4" /></>}
-          />
-          <QuickNavCard
-            to={`${base}/test-plans`}
-            label="Plans & milestones"
-            count={plans.length + milestones.length}
-            icon={<><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" /><rect x="9" y="3" width="6" height="4" rx="1" /><path d="M9 12h6" /><path d="M9 16h6" /></>}
-          />
-          <QuickNavCard
-            to={`${base}/bugs`}
-            label="Bug tracker"
-            count={stats.openBugs || undefined}
-            icon={<><path d="M8 8a4 4 0 0 1 8 0v8a4 4 0 0 1-8 0Z" /><path d="M3 13h5" /><path d="M16 13h5" /><path d="M4 20l4-3" /><path d="m16 17 4 3" /><path d="M9 4 7 2" /><path d="m15 4 2-2" /></>}
-          />
-          <QuickNavCard
-            to={`${base}/reports`}
-            label="Reports"
-            icon={<><path d="M4 19V5" /><path d="M20 19H4" /><path d="M8 15v-4" /><path d="M13 15V8" /><path d="M18 15v-6" /></>}
-          />
-        </div>
-      </section>
     </div>
   )
 }
