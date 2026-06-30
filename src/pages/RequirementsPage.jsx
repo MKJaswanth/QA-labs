@@ -20,6 +20,94 @@ const PRIORITIES = ['High', 'Medium', 'Low']
 
 const blankForm = () => ({ key: '', title: '', description: '', priority: 'Medium', testCaseIds: [] })
 
+function TcPickerSection({ form, testCases, tcModules, tcSearch, setTcSearch, tcModuleFilter, setTcModuleFilter, filteredTcs, toggleTc, addModule, removeModule, fullySelectedModules, availableModules }) {
+  return (
+    <div>
+      <label>Linked test cases <span className="hint">({form.testCaseIds.length} selected)</span></label>
+
+      {availableModules.length > 0 && (
+        <div className="req-module-add-row">
+          <select
+            value=""
+            onChange={(e) => { if (e.target.value) addModule(e.target.value) }}
+            aria-label="Add all cases from a module"
+            className="req-module-add-select"
+          >
+            <option value="">+ Add by module…</option>
+            {availableModules.map((m) => {
+              const count = testCases.filter((tc) => tc.module === m).length
+              return <option key={m} value={m}>{m} ({count} cases)</option>
+            })}
+          </select>
+        </div>
+      )}
+
+      {fullySelectedModules.length > 0 && (
+        <div className="req-module-chips">
+          {fullySelectedModules.map((m) => {
+            const count = testCases.filter((tc) => tc.module === m).length
+            return (
+              <span key={m} className="req-module-chip">
+                <span className="req-module-chip-name">{m}</span>
+                <span className="req-module-chip-count">{count}</span>
+                <button type="button" className="req-module-chip-remove" onClick={() => removeModule(m)} aria-label={`Remove ${m}`}>×</button>
+              </span>
+            )
+          })}
+        </div>
+      )}
+
+      <div className="req-tc-toolbar">
+        <input
+          value={tcSearch}
+          onChange={(e) => setTcSearch(e.target.value)}
+          placeholder="Search test cases…"
+          className="req-tc-search"
+        />
+        {tcModules.length > 0 && (
+          <select
+            value={tcModuleFilter}
+            onChange={(e) => setTcModuleFilter(e.target.value)}
+            className={`req-tc-module-select${tcModuleFilter ? ' filter-active' : ''}`}
+            aria-label="Filter by module"
+          >
+            <option value="">All modules</option>
+            {tcModules.map((m) => <option key={m} value={m}>{m}</option>)}
+          </select>
+        )}
+      </div>
+
+      {tcModuleFilter && (
+        <span className="req-tc-active-filter">
+          Module: {tcModuleFilter}
+          <button type="button" className="req-tc-filter-clear" onClick={() => setTcModuleFilter('')} aria-label="Clear module filter">×</button>
+        </span>
+      )}
+
+      <div className="req-tc-picker">
+        {testCases.length === 0 ? (
+          <p className="panel-empty-text">No test cases in this project yet.</p>
+        ) : filteredTcs.length === 0 ? (
+          <p className="panel-empty-text">No matches.</p>
+        ) : (
+          filteredTcs.map((tc) => (
+            <label key={tc.id} className="req-tc-option">
+              <input
+                className="row-checkbox"
+                type="checkbox"
+                checked={form.testCaseIds.includes(tc.id)}
+                onChange={() => toggleTc(tc.id)}
+              />
+              <span className="mono req-tc-id">{tc.sourceTcId || tc.id.slice(0, 8).toUpperCase()}</span>
+              <span className="req-tc-title" title={tc.title}>{tc.title}</span>
+            </label>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
 // Coverage verdict for a requirement, from its linked (existing) test cases.
 function coverageOf(req, tcById) {
   const linked = (req.testCaseIds || []).map((id) => tcById.get(id)).filter(Boolean)
@@ -95,6 +183,16 @@ export function RequirementsPage() {
     testCaseIds: f.testCaseIds.includes(id) ? f.testCaseIds.filter((x) => x !== id) : [...f.testCaseIds, id],
   }))
 
+  const addModule = (moduleName) => {
+    const moduleIds = testCases.filter((tc) => tc.module === moduleName).map((tc) => tc.id)
+    setForm((f) => ({ ...f, testCaseIds: [...new Set([...f.testCaseIds, ...moduleIds])] }))
+  }
+
+  const removeModule = (moduleName) => {
+    const moduleIds = new Set(testCases.filter((tc) => tc.module === moduleName).map((tc) => tc.id))
+    setForm((f) => ({ ...f, testCaseIds: f.testCaseIds.filter((id) => !moduleIds.has(id)) }))
+  }
+
   const submit = (e) => {
     e.preventDefault()
     if (!form.title.trim()) return
@@ -120,6 +218,20 @@ export function RequirementsPage() {
 
   // Unique module values for the picker filter
   const tcModules = useMemo(() => [...new Set(testCases.map((t) => t.module).filter(Boolean))].sort(), [testCases])
+
+  // Modules where every test case is already in form.testCaseIds
+  const fullySelectedModules = useMemo(
+    () => tcModules.filter((m) => {
+      const mCases = testCases.filter((tc) => tc.module === m)
+      return mCases.length > 0 && mCases.every((tc) => form.testCaseIds.includes(tc.id))
+    }),
+    [tcModules, testCases, form.testCaseIds],
+  )
+
+  const availableModules = useMemo(
+    () => tcModules.filter((m) => !fullySelectedModules.includes(m)),
+    [tcModules, fullySelectedModules],
+  )
 
   const filteredTcs = useMemo(() => {
     const matched = testCases.filter((tc) => {
@@ -308,54 +420,21 @@ export function RequirementsPage() {
                 Description
                 <textarea rows={3} value={form.description} onChange={set('description')} placeholder="What this requirement means / acceptance criteria…" />
               </label>
-              <div>
-                <label>Linked test cases <span className="hint">({form.testCaseIds.length} selected)</span></label>
-                <div className="req-tc-toolbar">
-                  <input
-                    value={tcSearch}
-                    onChange={(e) => setTcSearch(e.target.value)}
-                    placeholder="Search test cases…"
-                    className="req-tc-search"
-                  />
-                  {tcModules.length > 0 && (
-                    <select
-                      value={tcModuleFilter}
-                      onChange={(e) => setTcModuleFilter(e.target.value)}
-                      className={`req-tc-module-select${tcModuleFilter ? ' filter-active' : ''}`}
-                      aria-label="Filter by module"
-                    >
-                      <option value="">All modules</option>
-                      {tcModules.map((m) => <option key={m} value={m}>{m}</option>)}
-                    </select>
-                  )}
-                </div>
-                {tcModuleFilter && (
-                  <span className="req-tc-active-filter">
-                    Module: {tcModuleFilter}
-                    <button type="button" className="req-tc-filter-clear" onClick={() => setTcModuleFilter('')} aria-label="Clear module filter">×</button>
-                  </span>
-                )}
-                <div className="req-tc-picker">
-                  {testCases.length === 0 ? (
-                    <p className="panel-empty-text">No test cases in this project yet.</p>
-                  ) : filteredTcs.length === 0 ? (
-                    <p className="panel-empty-text">No matches.</p>
-                  ) : (
-                    filteredTcs.map((tc) => (
-                      <label key={tc.id} className="req-tc-option">
-                        <input
-                          className="row-checkbox"
-                          type="checkbox"
-                          checked={form.testCaseIds.includes(tc.id)}
-                          onChange={() => toggleTc(tc.id)}
-                        />
-                        <span className="mono req-tc-id">{tc.sourceTcId || tc.id.slice(0, 8).toUpperCase()}</span>
-                        <span className="req-tc-title" title={tc.title}>{tc.title}</span>
-                      </label>
-                    ))
-                  )}
-                </div>
-              </div>
+              <TcPickerSection
+                form={form}
+                testCases={testCases}
+                tcModules={tcModules}
+                tcSearch={tcSearch}
+                setTcSearch={setTcSearch}
+                tcModuleFilter={tcModuleFilter}
+                setTcModuleFilter={setTcModuleFilter}
+                filteredTcs={filteredTcs}
+                toggleTc={toggleTc}
+                addModule={addModule}
+                removeModule={removeModule}
+                fullySelectedModules={fullySelectedModules}
+                availableModules={availableModules}
+              />
               <div className="modal-footer">
                 <button type="button" className="secondary-button" onClick={() => setShowForm(false)}>Cancel</button>
                 <button type="submit" className="primary-button" disabled={!form.title.trim()}>
@@ -587,54 +666,21 @@ export function RequirementsPage() {
               Description
               <textarea rows={3} value={form.description} onChange={set('description')} placeholder="What this requirement means / acceptance criteria…" />
             </label>
-            <div>
-              <label>Linked test cases <span className="hint">({form.testCaseIds.length} selected)</span></label>
-              <div className="req-tc-toolbar">
-                <input
-                  value={tcSearch}
-                  onChange={(e) => setTcSearch(e.target.value)}
-                  placeholder="Search test cases…"
-                  className="req-tc-search"
-                />
-                {tcModules.length > 0 && (
-                  <select
-                    value={tcModuleFilter}
-                    onChange={(e) => setTcModuleFilter(e.target.value)}
-                    className={`req-tc-module-select${tcModuleFilter ? ' filter-active' : ''}`}
-                    aria-label="Filter by module"
-                  >
-                    <option value="">All modules</option>
-                    {tcModules.map((m) => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                )}
-              </div>
-              {tcModuleFilter && (
-                <span className="req-tc-active-filter">
-                  Module: {tcModuleFilter}
-                  <button type="button" className="req-tc-filter-clear" onClick={() => setTcModuleFilter('')} aria-label="Clear module filter">×</button>
-                </span>
-              )}
-              <div className="req-tc-picker">
-                {testCases.length === 0 ? (
-                  <p className="panel-empty-text">No test cases in this project yet.</p>
-                ) : filteredTcs.length === 0 ? (
-                  <p className="panel-empty-text">No matches.</p>
-                ) : (
-                  filteredTcs.map((tc) => (
-                    <label key={tc.id} className="req-tc-option">
-                      <input
-                        className="row-checkbox"
-                        type="checkbox"
-                        checked={form.testCaseIds.includes(tc.id)}
-                        onChange={() => toggleTc(tc.id)}
-                      />
-                      <span className="mono req-tc-id">{tc.sourceTcId || tc.id.slice(0, 8).toUpperCase()}</span>
-                      <span className="req-tc-title" title={tc.title}>{tc.title}</span>
-                    </label>
-                  ))
-                )}
-              </div>
-            </div>
+            <TcPickerSection
+              form={form}
+              testCases={testCases}
+              tcModules={tcModules}
+              tcSearch={tcSearch}
+              setTcSearch={setTcSearch}
+              tcModuleFilter={tcModuleFilter}
+              setTcModuleFilter={setTcModuleFilter}
+              filteredTcs={filteredTcs}
+              toggleTc={toggleTc}
+              addModule={addModule}
+              removeModule={removeModule}
+              fullySelectedModules={fullySelectedModules}
+              availableModules={availableModules}
+            />
             <div className="modal-footer">
               <button type="button" className="secondary-button" onClick={() => setShowForm(false)}>Cancel</button>
               <button type="submit" className="primary-button" disabled={!form.title.trim()}>

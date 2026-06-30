@@ -4536,6 +4536,33 @@ button { font-family: inherit; }
   gap: 12px;
 }
 
+/* ── Requirement module bulk-select ───────────────────────────────────── */
+.req-module-add-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.req-module-add-select {
+  flex: 1; font-size: 12.5px; padding: 6px 10px;
+  border: 1px dashed var(--accent, #2563eb); border-radius: 6px;
+  background: var(--accent-soft, #eff6ff); color: var(--accent, #2563eb);
+  cursor: pointer; font-weight: 600;
+}
+.req-module-add-select:focus { outline: none; border-style: solid; }
+.req-module-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.req-module-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--accent-soft, #eff6ff); border: 1px solid color-mix(in srgb, var(--accent, #2563eb) 30%, transparent);
+  border-radius: 999px; padding: 3px 8px 3px 10px; font-size: 12px;
+}
+.req-module-chip-name { font-weight: 600; color: var(--accent, #2563eb); }
+.req-module-chip-count {
+  background: var(--accent, #2563eb); color: #fff;
+  border-radius: 999px; padding: 0 6px; font-size: 10px; font-weight: 700; line-height: 18px;
+}
+.req-module-chip-remove {
+  background: none; border: none; cursor: pointer; color: var(--accent, #2563eb);
+  font-size: 15px; line-height: 1; padding: 0 2px; opacity: 0.7;
+  display: flex; align-items: center;
+}
+.req-module-chip-remove:hover { opacity: 1; }
+
 /* ── Requirement TC picker toolbar ────────────────────────────────────── */
 .req-tc-toolbar {
   display: flex;
