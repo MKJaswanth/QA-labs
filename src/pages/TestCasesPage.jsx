@@ -69,7 +69,10 @@ export function TestCasesPage() {
   const [fStatus, setFStatus] = useState(() => searchParams.get('status') || '')
   const [fModule, setFModule] = useState(() => searchParams.get('module') || '')
   const [fFolder, setFFolder] = useState(() => searchParams.get('folder') || '')
-  const [fAssignee, setFAssignee] = useState(() => searchParams.get('assignee') || '')
+  const [bulkMoveFolder, setBulkMoveFolder] = useState('')
+  const [showFolderModal, setShowFolderModal] = useState(false)
+  const [folderModalName, setFolderModalName] = useState('')
+  const [folderModalModules, setFolderModalModules] = useState(new Set())
   const [fTag, setFTag] = useState(() => searchParams.get('tag') || '')
   const [pageSize, setPageSize] = useState(10)
   const [page, setPage] = useState(1)
@@ -229,8 +232,8 @@ export function TestCasesPage() {
   }
 
   const setBug = (k) => (e) => setBugForm((f) => ({ ...f, [k]: e.target.value }))
-  const clearFilters = () => { setSearch(''); setFPriority(''); setFStatus(''); setFModule(''); setFAssignee(''); setFTag(''); setFFolder(''); setPage(1) }
-  const activeFilterCount = [search, fPriority, fStatus, fModule, fAssignee, fTag, fFolder].filter(Boolean).length
+  const clearFilters = () => { setSearch(''); setFPriority(''); setFStatus(''); setFModule(''); setFTag(''); setFFolder(''); setPage(1) }
+  const activeFilterCount = [search, fPriority, fStatus, fModule, fTag, fFolder].filter(Boolean).length
   const filterByTag = (tag) => { setFTag((cur) => (cur === tag ? '' : tag)); setPage(1) }
 
   const handleAdd = (e) => {
@@ -344,6 +347,42 @@ export function TestCasesPage() {
     addTestCase(clone)
   }
 
+  const allModulesList = useMemo(() => {
+    const map = {}
+    testCases.forEach((tc) => {
+      const m = tc.module || ''
+      if (!map[m]) map[m] = { name: m, count: 0 }
+      map[m].count++
+    })
+    return Object.values(map).sort((a, b) => a.name.localeCompare(b.name))
+  }, [testCases])
+
+  const handleCreateFolder = () => {
+    const name = folderModalName.trim()
+    if (!name || folderModalModules.size === 0) return
+    testCases.forEach((tc) => {
+      if (folderModalModules.has(tc.module || '')) {
+        updateTestCase({ ...tc, folder: name, updatedAt: new Date().toISOString() })
+      }
+    })
+    toast.success(`Folder "${name}" created`)
+    setShowFolderModal(false)
+    setFolderModalName('')
+    setFolderModalModules(new Set())
+    setFFolder(name)
+  }
+
+  const handleBulkMoveToFolder = () => {
+    if (!bulkMoveFolder.trim() || selectedIds.length === 0) return
+    const name = bulkMoveFolder.trim()
+    testCases
+      .filter((tc) => selectedIds.includes(tc.id))
+      .forEach((tc) => updateTestCase({ ...tc, folder: name, updatedAt: new Date().toISOString() }))
+    toast.success(`Moved ${selectedIds.length} case(s) to "${name}"`)
+    setSelectedIds([])
+    setBulkMoveFolder('')
+  }
+
   // Folder tree: built from test cases that have a folder field
   const hasAnyFolder = useMemo(() => testCases.some((tc) => tc.folder), [testCases])
   const folderTree = useMemo(() => {
@@ -370,7 +409,6 @@ export function TestCasesPage() {
         .map((t) => t.module).filter(Boolean)
     )
   ], [testCases, fFolder])
-  const assignees = [...new Set(testCases.map((t) => t.assignee).filter(Boolean))]
   const allTags = [...new Set(testCases.flatMap((t) => t.tags || []))].sort((a, b) => a.localeCompare(b))
 
   const visible = sortedCases.filter((tc) => {
@@ -379,7 +417,6 @@ export function TestCasesPage() {
     if (fPriority && tc.priority !== fPriority) return false
     if (fStatus && tc.status !== fStatus) return false
     if (fModule && tc.module !== fModule) return false
-    if (fAssignee && tc.assignee !== fAssignee) return false
     if (fTag && !(tc.tags || []).includes(fTag)) return false
     return true
   })
@@ -454,7 +491,19 @@ export function TestCasesPage() {
         {/* Folder tree sidebar — only shown when test cases have folder values */}
         {hasAnyFolder && (
           <aside className="tc-folder-sidebar">
-            <div className="tc-folder-sidebar-title">Folders</div>
+            <div className="tc-folder-sidebar-header">
+              <span className="tc-folder-sidebar-title">Folders</span>
+              {isLead && (
+                <button
+                  className="tc-folder-add-btn"
+                  type="button"
+                  title="Create folder from modules"
+                  onClick={() => { setFolderModalName(''); setFolderModalModules(new Set()); setShowFolderModal(true) }}
+                >
+                  +
+                </button>
+              )}
+            </div>
             <ul className="tc-folder-tree">
               <li
                 className={`tc-folder-all${!fFolder ? ' tc-folder-all--active' : ''}`}
@@ -515,12 +564,6 @@ export function TestCasesPage() {
               <option value="">Status</option>
               {TEST_STATUSES.map((s) => <option key={s}>{s}</option>)}
             </select>
-            {assignees.length > 0 && (
-              <select aria-label="Assignee filter" value={fAssignee} onChange={updateListControl(setFAssignee)} className={fAssignee ? 'filter-active' : ''}>
-                <option value="">Assignee</option>
-                {assignees.map((a) => <option key={a}>{a}</option>)}
-              </select>
-            )}
             {allTags.length > 0 && (
               <select aria-label="Tag filter" value={fTag} onChange={updateListControl(setFTag)} className={fTag ? 'filter-active' : ''}>
                 <option value="">Tag</option>
@@ -560,6 +603,26 @@ export function TestCasesPage() {
                   >
                     Delete selected
                   </button>
+                  <span className="bulk-divider" />
+                  <input
+                    type="text"
+                    value={bulkMoveFolder}
+                    onChange={(e) => setBulkMoveFolder(e.target.value)}
+                    placeholder="Folder name…"
+                    list="bulk-folder-datalist"
+                    className="bulk-folder-input"
+                  />
+                  <datalist id="bulk-folder-datalist">
+                    {folderTree.map((f) => <option key={f.name} value={f.name} />)}
+                  </datalist>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    onClick={handleBulkMoveToFolder}
+                    disabled={!bulkMoveFolder.trim()}
+                  >
+                    Move to folder
+                  </button>
                 </div>
               ) : (
                 <span className="text-muted" style={{ fontSize: 11, fontStyle: 'italic' }}>Actions restricted (read-only)</span>
@@ -579,7 +642,6 @@ export function TestCasesPage() {
                   <col className="tc-col-title" />
                   <col className="tc-col-module" />
                   <col className="tc-col-priority" />
-                  <col className="tc-col-assignee" />
                   <col className="tc-col-status" />
                   <col className="tc-col-actions" />
                 </colgroup>
@@ -604,9 +666,6 @@ export function TestCasesPage() {
                     </th>
                     <th>
                       <SortTh col="priority" label="Priority" active={tcSortKey} dir={tcSortDir} onSort={tcToggle} />
-                    </th>
-                    <th>
-                      <SortTh col="assignee" label="Assignee" active={tcSortKey} dir={tcSortDir} onSort={tcToggle} />
                     </th>
                     <th>
                       <SortTh col="status" label="Status" active={tcSortKey} dir={tcSortDir} onSort={tcToggle} />
@@ -647,7 +706,6 @@ export function TestCasesPage() {
                           {PRIORITIES.map((p) => <option key={p}>{p}</option>)}
                         </select>
                       </td>
-                      <td>{tc.assignee || '—'}</td>
                       <td>
                         <select
                           className={`inline-select status-select status-select--${STATUS_TONE[tc.status] ?? 'neutral'}`}
@@ -726,10 +784,6 @@ export function TestCasesPage() {
                     <div>
                       <span>Module:</span>
                       <strong>{tc.module || '—'}</strong>
-                    </div>
-                    <div>
-                      <span>Assignee:</span>
-                      <strong>{tc.assignee || '—'}</strong>
                     </div>
                   </div>
                   <div className="mobile-card-actions">
@@ -1039,6 +1093,68 @@ export function TestCasesPage() {
               <button type="submit" className="primary-button">{editTc ? 'Save changes' : 'Add test case'}</button>
             </div>
           </form>
+        </Modal>
+      )}
+
+      {showFolderModal && (
+        <Modal title="Create folder" onClose={() => setShowFolderModal(false)}>
+          <div className="modal-form">
+            <label>
+              Folder name <span className="required">*</span>
+              <input
+                autoFocus
+                value={folderModalName}
+                onChange={(e) => setFolderModalName(e.target.value)}
+                placeholder="e.g. LoginSuite, Regression…"
+                list="folder-modal-datalist"
+              />
+              <datalist id="folder-modal-datalist">
+                {folderTree.map((f) => <option key={f.name} value={f.name} />)}
+              </datalist>
+            </label>
+            <div className="folder-modal-modules-label">
+              <span>Select modules to include</span>
+              <button
+                type="button"
+                className="link-btn"
+                onClick={() => setFolderModalModules(
+                  folderModalModules.size === allModulesList.length
+                    ? new Set()
+                    : new Set(allModulesList.map((m) => m.name))
+                )}
+              >
+                {folderModalModules.size === allModulesList.length ? 'Deselect all' : 'Select all'}
+              </button>
+            </div>
+            <div className="folder-modal-module-list">
+              {allModulesList.map((mod) => (
+                <label key={mod.name || '__nomod__'} className="folder-modal-module-item">
+                  <input
+                    type="checkbox"
+                    checked={folderModalModules.has(mod.name)}
+                    onChange={() => setFolderModalModules((prev) => {
+                      const next = new Set(prev)
+                      next.has(mod.name) ? next.delete(mod.name) : next.add(mod.name)
+                      return next
+                    })}
+                  />
+                  <span className="folder-modal-module-name">{mod.name || '(no module)'}</span>
+                  <span className="tc-folder-count">{mod.count}</span>
+                </label>
+              ))}
+            </div>
+            <div className="modal-footer" style={{ marginTop: 16 }}>
+              <button type="button" className="secondary-button" onClick={() => setShowFolderModal(false)}>Cancel</button>
+              <button
+                type="button"
+                className="primary-button"
+                disabled={!folderModalName.trim() || folderModalModules.size === 0}
+                onClick={handleCreateFolder}
+              >
+                Create folder
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
 

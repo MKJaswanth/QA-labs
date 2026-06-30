@@ -103,12 +103,9 @@ function parseGoogleSheetUrl(url) {
   return { sheetId, gid }
 }
 
-function toCsvExportUrl(sheetId, gid) {
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=csv&gid=${gid}`
-}
-
-function textToBuffer(text) {
-  return new TextEncoder().encode(text).buffer
+function toXlsxExportUrl(sheetId) {
+  // XLSX export fetches ALL sheets so multi-sheet → folder detection works
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`
 }
 
 // ── Stepper indicator ──────────────────────────────────────────────────────
@@ -196,7 +193,7 @@ function GoogleSheetImport({ onCsvParsed }) {
     setLoading(true)
 
     try {
-      const exportUrl = toCsvExportUrl(parsed.sheetId, parsed.gid)
+      const exportUrl = toXlsxExportUrl(parsed.sheetId)
       const res = await fetch(exportUrl)
 
       if (!res.ok) {
@@ -209,16 +206,16 @@ function GoogleSheetImport({ onCsvParsed }) {
         return
       }
 
-      const csvText = await res.text()
+      const buffer = await res.arrayBuffer()
 
-      if (!csvText || csvText.trim().length === 0) {
-        setError('The sheet appears to be empty. Please check the content and try again.')
+      if (!buffer || buffer.byteLength === 0) {
+        setError('The spreadsheet appears to be empty. Please check the content and try again.')
         setLoading(false)
         return
       }
 
-      const buffer = textToBuffer(csvText)
-      onCsvParsed(buffer, 'google-sheet.csv')
+      // Pass as .xlsx so the parser detects all sheets and maps each to a folder
+      onCsvParsed(buffer, 'google-sheet.xlsx')
     } catch {
       setError(
         'Could not fetch the sheet. This sheet must be public or published to the web. ' +
@@ -264,7 +261,7 @@ function GoogleSheetImport({ onCsvParsed }) {
       <div className="bulk-template-row">
         <p className="bulk-template-hint">
           Paste a link to a <em>public</em> Google Sheet. The sheet must be set to
-          "Anyone with the link" or published to the web.
+          "Anyone with the link" or published to the web. Multiple sheets will each become a folder.
         </p>
         <button className="secondary-button" type="button" onClick={downloadTemplate}>
           <DownloadIcon width={14} height={14} /> Download template
