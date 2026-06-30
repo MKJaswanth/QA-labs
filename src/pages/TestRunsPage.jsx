@@ -303,6 +303,40 @@ export function TestRunsPage() {
     [testCases],
   )
 
+  // Auto-suggest a run name from the active filter or most common module/folder
+  const suggestedRunName = useMemo(() => {
+    if (caseModuleFilter) return caseModuleFilter
+    if (caseFolderFilter) return caseFolderFilter
+    if (selectedIds.length === 0) return ''
+    const selected = testCases.filter((tc) => selectedIds.includes(tc.id))
+    const modCounts = {}
+    const folderCounts = {}
+    selected.forEach((tc) => {
+      if (tc.module) modCounts[tc.module] = (modCounts[tc.module] || 0) + 1
+      if (tc.folder) folderCounts[tc.folder] = (folderCounts[tc.folder] || 0) + 1
+    })
+    const topModule = Object.entries(modCounts).sort((a, b) => b[1] - a[1])[0]?.[0]
+    const topFolderEntry = Object.entries(folderCounts).sort((a, b) => b[1] - a[1])[0]
+    if (topFolderEntry && topFolderEntry[1] >= selected.length * 0.6 && topModule) {
+      return `${topFolderEntry[0]} – ${topModule}`
+    }
+    return topModule || topFolderEntry?.[0] || ''
+  }, [caseModuleFilter, caseFolderFilter, selectedIds, testCases])
+
+  // Auto-fill run name whenever suggestion changes, but only if user hasn't typed a custom name
+  const prevSuggestedRef = useRef('')
+  useEffect(() => {
+    if (!suggestedRunName) return
+    setRunName((current) => {
+      const isAutoFilled = !current.trim() || current === prevSuggestedRef.current
+      if (isAutoFilled) {
+        prevSuggestedRef.current = suggestedRunName
+        return suggestedRunName
+      }
+      return current
+    })
+  }, [suggestedRunName])
+
   const availableModules = useMemo(() => {
     const base = caseFolderFilter ? testCases.filter((tc) => (tc.folder || '') === caseFolderFilter) : testCases
     return [...new Set(base.map((tc) => tc.module).filter(Boolean))].sort()
@@ -531,7 +565,7 @@ export function TestRunsPage() {
     const totalBugsLogged = bugsLogged + autoBugIds.length
     const allLinkedBugIds = [...loggedBugIds, ...autoBugIds]
 
-    const runNameText = runName.trim() || `${project?.name ?? 'Project'} run`
+    const runNameText = runName.trim() || suggestedRunName || `${project?.name ?? 'Project'} run`
     const run = addRun({
       id: runId,
       name: runNameText,
@@ -1377,7 +1411,7 @@ export function TestRunsPage() {
             </div>
           )}
           <div className="run-nav-actions">
-            <button className="secondary-button" type="button" onClick={() => setMode('setup')}>Start another run</button>
+            <button className="secondary-button" type="button" onClick={() => { setMode('setup'); setRunName(''); prevSuggestedRef.current = '' }}>Start another run</button>
             <button
               className="secondary-button"
               type="button"
