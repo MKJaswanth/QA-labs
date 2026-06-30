@@ -805,7 +805,7 @@ export function BugTrackerPage() {
             disabled={isViewer}
             tagSuggestions={allTags}
           />
-          <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+          <div style={{ marginTop: '0', borderTop: '1px solid var(--border)', padding: '16px 18px 18px' }}>
             <h3 style={{ margin: '0 0 12px', fontSize: '13px', fontWeight: 700, color: 'var(--text-strong)' }}>Discussion</h3>
             <CommentsPanel
               projectId={projectId}

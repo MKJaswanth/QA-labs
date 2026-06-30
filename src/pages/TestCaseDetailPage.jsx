@@ -370,13 +370,15 @@ export function TestCaseDetailPage() {
             <div className="section-header">
               <h2>Discussion</h2>
             </div>
-            <CommentsPanel
-              projectId={projectId}
-              entityType="testCase"
-              entityId={testCaseId}
-              entityTitle={tc.title}
-              entityOwnerName={tc.assignee || tc.createdByName}
-            />
+            <div style={{ padding: '16px' }}>
+              <CommentsPanel
+                projectId={projectId}
+                entityType="testCase"
+                entityId={testCaseId}
+                entityTitle={tc.title}
+                entityOwnerName={tc.assignee || tc.createdByName}
+              />
+            </div>
           </div>
 
         </div>
