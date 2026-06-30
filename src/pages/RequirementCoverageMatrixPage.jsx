@@ -140,24 +140,6 @@ export function RequirementCoverageMatrixPage() {
         description="Requirement-to-test-case coverage overview with latest execution status."
       />
 
-      {/* Health indicator banner */}
-      {totalReqs > 0 && (
-        <div className={`cov-health-banner cov-health-banner--${verifiedPct >= 80 ? 'healthy' : verifiedPct >= 50 ? 'at-risk' : 'critical'}`}>
-          <div className="cov-health-icon">
-            {verifiedPct >= 80 ? '✓' : verifiedPct >= 50 ? '!' : '✕'}
-          </div>
-          <div className="cov-health-text">
-            <strong>
-              {verifiedPct >= 80 ? 'Coverage healthy' : verifiedPct >= 50 ? 'Coverage at risk' : 'Coverage needs attention'}
-            </strong>
-            <span>{verifiedPct}% of requirements verified · {verified} of {totalReqs} have all tests passing</span>
-          </div>
-          <div className="cov-health-bar">
-            <span className="cov-health-bar-fill" style={{ width: `${verifiedPct}%` }} />
-          </div>
-        </div>
-      )}
-
       {/* Summary Strip */}
       {totalReqs > 0 && (
         <section className="tp-summary-strip cov-summary-strip">

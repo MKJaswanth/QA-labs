@@ -6,6 +6,7 @@ import { Modal } from '../components/Modal'
 import { useRequirements } from '../hooks/useRequirements'
 import { useTestCases } from '../hooks/useTestCases'
 import { useBugs } from '../hooks/useBugs'
+import { useTestRuns } from '../hooks/useTestRuns'
 import { RequirementBulkUploadModal } from '../components/RequirementBulkUploadModal'
 import { useConfirm } from '../context/useConfirm'
 import { useToast } from '../context/useToast'
@@ -108,13 +109,14 @@ function TcPickerSection({ form, testCases, tcModules, tcSearch, setTcSearch, tc
   )
 }
 
-// Coverage verdict for a requirement, from its linked (existing) test cases.
-function coverageOf(req, tcById) {
+// Coverage verdict for a requirement — uses latest run status, falls back to tc.status.
+function coverageOf(req, tcById, runStatusMap = {}) {
   const linked = (req.testCaseIds || []).map((id) => tcById.get(id)).filter(Boolean)
   const total = linked.length
-  const passed = linked.filter((t) => normalizeTestStatus(t.status) === 'Pass').length
-  const failed = linked.filter((t) => ['Fail', 'Blocker'].includes(normalizeTestStatus(t.status))).length
-  const pending = linked.filter((t) => normalizeTestStatus(t.status) === 'Not Executed').length
+  const getStatus = (tc) => normalizeTestStatus(runStatusMap[tc.id] || tc.status)
+  const passed = linked.filter((t) => getStatus(t) === 'Pass').length
+  const failed = linked.filter((t) => ['Fail', 'Blocker'].includes(getStatus(t))).length
+  const pending = linked.filter((t) => getStatus(t) === 'Not Executed').length
   let verdict
   if (total === 0) verdict = { label: 'Not covered', tone: 'failed' }
   else if (failed > 0) verdict = { label: 'Failing', tone: 'failed' }
@@ -129,6 +131,7 @@ export function RequirementsPage() {
   const { requirements, addRequirement, updateRequirement, removeRequirement } = useRequirements(projectId)
   const { testCases, updateTestCase } = useTestCases(projectId)
   const { bugs } = useBugs(projectId)
+  const { runs } = useTestRuns(projectId)
   const { isLead } = useUserRole()
   const { user } = useUser()
   const confirm = useConfirm()
@@ -144,10 +147,22 @@ export function RequirementsPage() {
 
   const tcById = useMemo(() => new Map(testCases.map((tc) => [tc.id, tc])), [testCases])
 
+  // Build latest-run status map so coverage stats reflect actual run results.
+  const runStatusMap = useMemo(() => {
+    const sorted = [...runs].sort(
+      (a, b) => new Date(a.completedAt || a.startedAt || 0) - new Date(b.completedAt || b.startedAt || 0)
+    )
+    const map = {}
+    sorted.forEach((run) => {
+      ;(run.cases || []).forEach((rc) => { if (rc.testCaseId) map[rc.testCaseId] = rc.status })
+    })
+    return map
+  }, [runs])
+
   // Newest requirements first.
   const rows = [...requirements]
     .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    .map((req) => ({ req, cov: coverageOf(req, tcById) }))
+    .map((req) => ({ req, cov: coverageOf(req, tcById, runStatusMap) }))
 
   const filteredRows = useMemo(() => {
     return rows.filter(({ req }) => requirementMatchesSearch(req, search))
