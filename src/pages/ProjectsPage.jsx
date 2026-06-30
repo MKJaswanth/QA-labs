@@ -10,43 +10,14 @@ import { useTeamMembers } from '../hooks/useTeamMembers'
 import { getBugs, getTestCases, getTestRuns } from '../utils/storage'
 import { useUserRole } from '../hooks/useUserRole'
 import { isOpenBug } from '../utils/reportMetrics'
+import { XIcon } from '../components/Icons'
 
-function Avatar({ name, size = 26 }) {
+function Avatar({ name }) {
   const initials = name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
   return (
-    <span className="avatar" title={name} aria-label={name} style={{ width: size, height: size, fontSize: size * 0.38 }}>
+    <span className="avatar" title={name} aria-label={name}>
       {initials}
     </span>
-  )
-}
-
-function ProjectInitial({ name }) {
-  const letter = (name || '?')[0].toUpperCase()
-  const hue = (name || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 360
-  return (
-    <div className="proj-card-initial" style={{ background: `hsl(${hue}, 55%, 50%)` }}>
-      {letter}
-    </div>
-  )
-}
-
-function StatChip({ label, value, danger }) {
-  return (
-    <div className="proj-card-chip">
-      <strong className={danger && value > 0 ? 'proj-chip-danger' : ''}>{value}</strong>
-      <span>{label}</span>
-    </div>
-  )
-}
-
-function MiniBar({ pct, tone }) {
-  const color = tone === 'good' ? '#22c55e' : tone === 'warn' ? '#f59e0b' : '#ef4444'
-  return (
-    <div className="proj-card-bar">
-      <div className="proj-card-bar-track">
-        <div className="proj-card-bar-fill" style={{ width: `${pct}%`, background: color }} />
-      </div>
-    </div>
   )
 }
 
@@ -69,11 +40,20 @@ export function ProjectsPage() {
     const passed = cases.filter(tc => tc.status === 'Pass').length
     const passRate = cases.length > 0 ? Math.round((passed / cases.length) * 100) : 0
     const openBugs = bugs.filter(isOpenBug).length
-    const inProgressRuns = runs.filter(r => !r.completedAt)
-    const lastRun = runs.filter(r => r.completedAt).sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0]
+    const inProgressRuns = runs.filter(r => !r.completedAt).length
+    const lastRun = runs
+      .filter(r => r.completedAt)
+      .sort((a, b) => new Date(b.completedAt) - new Date(a.completedAt))[0]
     const projectMembers = members.filter((m) => project.memberIds?.includes(m.id))
-    const tone = cases.length === 0 ? 'neutral' : passRate >= 70 ? 'good' : passRate >= 50 ? 'warn' : 'bad'
-    return { ...project, cases: cases.length, openBugs, runs: runs.length, inProgressRuns: inProgressRuns.length, passRate, lastRun, projectMembers, tone }
+    const healthTone = cases.length === 0 ? 'neutral'
+      : passRate >= 70 ? 'passed'
+      : passRate >= 50 ? 'pending'
+      : 'failed'
+    const healthLabel = cases.length === 0 ? 'No data'
+      : passRate >= 70 ? 'Healthy'
+      : passRate >= 50 ? 'At risk'
+      : 'Critical'
+    return { ...project, totalCases: cases.length, openBugs, totalRuns: runs.length, inProgressRuns, passRate, lastRun, projectMembers, healthTone, healthLabel }
   }), [projects, members])
 
   const toggleMember = (id) =>
@@ -93,11 +73,11 @@ export function ProjectsPage() {
         memberIds: form.memberIds,
       })
       if (remoteReady && !remoteSaved) {
-        toast.error('Project saved in this browser, but Firebase sync failed. Check Firestore rules/network and try again.')
+        toast.error('Project saved locally but Firebase sync failed. Check Firestore rules and try again.')
       } else if (!remoteReady) {
-        toast.warning('Project saved locally only. Sign in with a real account and wait for cloud sync before creating shared projects.')
+        toast.warning('Project saved locally only.')
       } else {
-        toast.success('Project created and synced to Firebase.')
+        toast.success('Project created.')
       }
       setForm(blank)
       setShowAdd(false)
@@ -128,74 +108,93 @@ export function ProjectsPage() {
       ) : (
         <section className="proj-grid">
           {enriched.map((project) => (
-            <article key={project.id} className={`proj-card proj-card--${project.tone}`}>
+            <article key={project.id} className="proj-card">
 
-              {/* Card top: initial + health */}
-              <div className="proj-card-top">
-                <ProjectInitial name={project.name} />
-                <div className="proj-card-top-right">
-                  {project.cases > 0 && (
-                    <StatusPill tone={project.passRate >= 70 ? 'passed' : project.passRate >= 50 ? 'pending' : 'failed'}>
-                      {project.passRate >= 70 ? 'Healthy' : project.passRate >= 50 ? 'At risk' : 'Critical'}
-                    </StatusPill>
-                  )}
-                  {project.inProgressRuns > 0 && (
-                    <div className="proj-card-live-badge">
-                      <span className="proj-card-live-dot" />
-                      {project.inProgressRuns} active
-                    </div>
+              {/* Header: initial + name + health */}
+              <div className="proj-card-head">
+                <div className="proj-card-initial">
+                  {(project.name || '?')[0].toUpperCase()}
+                </div>
+                <div className="proj-card-head-text">
+                  <h2 className="proj-card-name">{project.name}</h2>
+                  {project.description && (
+                    <p className="proj-card-desc">{project.description}</p>
                   )}
                 </div>
+                {project.totalCases > 0 && (
+                  <StatusPill tone={project.healthTone} style={{ flexShrink: 0 }}>
+                    {project.healthLabel}
+                  </StatusPill>
+                )}
               </div>
 
-              {/* Name + description */}
-              <div className="proj-card-identity">
-                <h2>{project.name}</h2>
-                {project.description && <p>{project.description}</p>}
-              </div>
-
-              {/* Stats chips */}
-              <div className="proj-card-chips">
-                <StatChip label="cases" value={project.cases} />
-                <StatChip label="bugs" value={project.openBugs} danger />
-                <StatChip label="runs" value={project.runs} />
+              {/* Stat row */}
+              <div className="proj-card-stats">
+                <div className="proj-card-stat">
+                  <strong>{project.totalCases}</strong>
+                  <span>cases</span>
+                </div>
+                <div className="proj-card-stat">
+                  <strong className={project.openBugs > 0 ? 'proj-stat-danger' : ''}>
+                    {project.openBugs}
+                  </strong>
+                  <span>open bugs</span>
+                </div>
+                <div className="proj-card-stat">
+                  <strong>{project.totalRuns}</strong>
+                  <span>runs</span>
+                </div>
               </div>
 
               {/* Pass rate bar */}
-              {project.cases > 0 && (
+              {project.totalCases > 0 && (
                 <div className="proj-card-rate">
-                  <div className="proj-card-rate-header">
-                    <span>Pass rate</span>
-                    <strong className={`proj-rate-val--${project.tone}`}>{project.passRate}%</strong>
+                  <div className="proj-card-rate-row">
+                    <span className="proj-card-rate-label">Pass rate</span>
+                    <span className="proj-card-rate-val">{project.passRate}%</span>
                   </div>
-                  <MiniBar pct={project.passRate} tone={project.tone} />
+                  <div className="proj-card-bar-track">
+                    <div
+                      className="proj-card-bar-fill"
+                      style={{ width: `${project.passRate}%` }}
+                    />
+                  </div>
                 </div>
               )}
 
-              {/* Footer: team + last run + actions */}
+              {/* Footer */}
               <div className="proj-card-footer">
                 <div className="proj-card-footer-left">
                   {project.projectMembers.length > 0 && (
-                    <div className="avatar-row proj-card-avatars">
-                      {project.projectMembers.slice(0, 4).map(m => <Avatar key={m.id} name={m.name} />)}
-                      {project.projectMembers.length > 4 && (
-                        <span className="avatar proj-avatar-more" style={{ width: 26, height: 26, fontSize: 10 }}>
-                          +{project.projectMembers.length - 4}
+                    <div className="avatar-row">
+                      {project.projectMembers.slice(0, 5).map(m => (
+                        <Avatar key={m.id} name={m.name} />
+                      ))}
+                      {project.projectMembers.length > 5 && (
+                        <span className="avatar proj-avatar-extra">
+                          +{project.projectMembers.length - 5}
                         </span>
                       )}
                     </div>
                   )}
-                  {project.lastRun && (
+                  {project.inProgressRuns > 0 && (
+                    <span className="proj-card-live">
+                      <span className="proj-card-live-dot" />
+                      {project.inProgressRuns} run{project.inProgressRuns !== 1 ? 's' : ''} active
+                    </span>
+                  )}
+                  {!project.inProgressRuns && project.lastRun && (
                     <span className="proj-card-last-run">
                       Last run {new Date(project.lastRun.completedAt).toLocaleDateString()}
                     </span>
                   )}
                 </div>
-                <div className="proj-card-actions">
+
+                <div className="proj-card-footer-right">
                   <Link
                     to={`/projects/${project.id}/dashboard`}
                     className="primary-button"
-                    style={{ textDecoration: 'none', fontSize: 12, padding: '5px 12px' }}
+                    style={{ textDecoration: 'none', fontSize: 13, padding: '6px 14px' }}
                   >
                     Open →
                   </Link>
@@ -207,7 +206,7 @@ export function ProjectsPage() {
                       onClick={async () => {
                         const ok = await confirm({
                           title: 'Delete project?',
-                          message: `All test cases, bugs, and runs in "${project.name}" will be permanently deleted and cannot be recovered.`,
+                          message: `All data in "${project.name}" will be permanently deleted.`,
                           confirmLabel: 'Delete project',
                           danger: true,
                           requireText: project.name,
@@ -215,9 +214,7 @@ export function ProjectsPage() {
                         if (ok) removeProject(project.id)
                       }}
                     >
-                      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                        <polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
-                      </svg>
+                      <XIcon width={14} height={14} />
                     </button>
                   )}
                 </div>
@@ -253,7 +250,11 @@ export function ProjectsPage() {
                 <div className="member-picker-list">
                   {members.map((m) => (
                     <label key={m.id} className="member-check">
-                      <input type="checkbox" checked={form.memberIds.includes(m.id)} onChange={() => toggleMember(m.id)} />
+                      <input
+                        type="checkbox"
+                        checked={form.memberIds.includes(m.id)}
+                        onChange={() => toggleMember(m.id)}
+                      />
                       <Avatar name={m.name} />
                       <span>{m.name}</span>
                     </label>
@@ -262,8 +263,12 @@ export function ProjectsPage() {
               </fieldset>
             )}
             <div className="modal-footer">
-              <button type="button" className="secondary-button" onClick={() => { setShowAdd(false); setForm(blank) }}>Cancel</button>
-              <button type="submit" className="primary-button" disabled={saving}>{saving ? 'Creating…' : 'Create project'}</button>
+              <button type="button" className="secondary-button" onClick={() => { setShowAdd(false); setForm(blank) }}>
+                Cancel
+              </button>
+              <button type="submit" className="primary-button" disabled={saving}>
+                {saving ? 'Creating…' : 'Create project'}
+              </button>
             </div>
           </form>
         </Modal>
