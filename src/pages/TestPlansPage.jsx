@@ -275,7 +275,6 @@ export function TestPlansPage() {
 
           {/* Scope callout — makes it immediately clear this is about test scope */}
           <div className="tp-scope-callout">
-            <span className="tp-scope-icon">📋</span>
             <div className="tp-scope-text">
               <strong>
                 {planReqs.length} requirement{planReqs.length !== 1 ? 's' : ''} in scope
@@ -305,9 +304,9 @@ export function TestPlansPage() {
           <div className="req-detail-meta">
             <div><span>Scope</span><strong>{metrics.scopeTotal} cases</strong></div>
             <div><span>Executed</span><strong>{metrics.scopeExecuted}</strong></div>
-            <div><span>Passed</span><strong style={{ color: '#1a6b37' }}>{metrics.scopePassed}</strong></div>
-            <div><span>Failed</span><strong style={{ color: '#a93030' }}>{metrics.scopeFailed}</strong></div>
-            <div><span>Blocked</span><strong style={{ color: '#7f1d1d' }}>{metrics.scopeBlocked}</strong></div>
+            <div><span>Passed</span><strong style={{ color: 'var(--success)' }}>{metrics.scopePassed}</strong></div>
+            <div><span>Failed</span><strong style={{ color: 'var(--danger)' }}>{metrics.scopeFailed}</strong></div>
+            <div><span>Blocked</span><strong style={{ color: 'var(--danger)' }}>{metrics.scopeBlocked}</strong></div>
             <div><span>Runs</span><strong>{metrics.totalRuns}</strong></div>
             <div><span>Pass rate</span><strong>{metrics.passRate}%</strong></div>
             {metrics.bugCount > 0 && <div><span>Bugs logged</span><strong>{metrics.bugCount}</strong></div>}
@@ -530,7 +529,7 @@ export function TestPlansPage() {
       : 'success'
 
     const countdownEl = milestoneObj.status === 'Completed' ? (
-      <><div className="ms-readiness-big">✓</div><div className="ms-readiness-label">Completed</div></>
+      <><div className="ms-readiness-big">Done</div><div className="ms-readiness-label">Completed</div></>
     ) : metrics.overdue ? (
       <><div className="ms-readiness-big">{Math.abs(metrics.daysLeft)}d</div><div className="ms-readiness-label">Overdue</div></>
     ) : metrics.daysLeft !== null ? (
@@ -543,7 +542,7 @@ export function TestPlansPage() {
       <div className="page-entrance">
         <PageHeader
           title={milestoneObj.name}
-          description="Release readiness dashboard — tracks all linked test plans toward this deadline."
+          description={milestoneObj.description}
           action={
             <div className="page-actions-row">
               <button className="secondary-button" type="button" onClick={() => setSelectedMilestoneId(null)}>Back</button>
@@ -596,9 +595,9 @@ export function TestPlansPage() {
             <div><span>Plans</span><strong>{metrics.totalPlans}</strong></div>
             <div><span>Total runs</span><strong>{metrics.totalRuns}</strong></div>
             <div><span>Total cases</span><strong>{metrics.scopeTotal}</strong></div>
-            <div><span>Passed</span><strong style={{ color: '#1a6b37' }}>{metrics.scopePassed}</strong></div>
-            <div><span>Failed</span><strong style={{ color: '#a93030' }}>{metrics.scopeFailed}</strong></div>
-            <div><span>Blocked</span><strong style={{ color: '#7f1d1d' }}>{metrics.scopeBlocked}</strong></div>
+            <div><span>Passed</span><strong style={{ color: 'var(--success)' }}>{metrics.scopePassed}</strong></div>
+            <div><span>Failed</span><strong style={{ color: 'var(--danger)' }}>{metrics.scopeFailed}</strong></div>
+            <div><span>Blocked</span><strong style={{ color: 'var(--danger)' }}>{metrics.scopeBlocked}</strong></div>
             {metrics.bugCount > 0 && <div><span>Bugs logged</span><strong>{metrics.bugCount}</strong></div>}
           </div>
 
@@ -644,8 +643,8 @@ export function TestPlansPage() {
                     <div className="ms-plan-card-stat">
                       <span>{pm.scopeTotal} cases</span>
                       <span>{pm.totalRuns} run{pm.totalRuns !== 1 ? 's' : ''}</span>
-                      {pm.scopeFailed > 0 && <span style={{ color: '#a93030' }}>{pm.scopeFailed} failed</span>}
-                      {pm.bugCount > 0 && <span style={{ color: '#6d28d9' }}>{pm.bugCount} bug{pm.bugCount !== 1 ? 's' : ''}</span>}
+                      {pm.scopeFailed > 0 && <span style={{ color: 'var(--danger)' }}>{pm.scopeFailed} failed</span>}
+                      {pm.bugCount > 0 && <span style={{ color: 'var(--text-muted)' }}>{pm.bugCount} bug{pm.bugCount !== 1 ? 's' : ''}</span>}
                     </div>
                     <SegBar
                       total={pm.scopeTotal}
@@ -772,7 +771,7 @@ export function TestPlansPage() {
           className={`tab-btn${tab === 'milestones' ? ' tab-btn--active' : ''}`}
           onClick={() => setTab('milestones')}
         >
-          <span>🏁 Milestones</span>
+          <span>Milestones</span>
           <span className="tab-count-badge">{milestones.length}</span>
         </button>
         <button
@@ -781,7 +780,7 @@ export function TestPlansPage() {
           className={`tab-btn${tab === 'plans' ? ' tab-btn--active' : ''}`}
           onClick={() => setTab('plans')}
         >
-          <span>📋 Test plans</span>
+          <span>Test plans</span>
           <span className="tab-count-badge">{plans.length}</span>
         </button>
       </div>
@@ -850,7 +849,7 @@ export function TestPlansPage() {
                               </button>
                               {plan.description && <p className="tp-row-desc">{plan.description}</p>}
                               <div className="tp-row-tags">
-                                {parentMs && <span className="tp-milestone-chip">🏁 {parentMs.name}</span>}
+                                {parentMs && <span className="tp-milestone-chip">{parentMs.name}</span>}
                                 {metrics.totalRuns > 0 && <span className="tp-tag">{metrics.totalRuns} run{metrics.totalRuns !== 1 ? 's' : ''}</span>}
                                 {metrics.bugCount > 0 && <span className="tp-tag tp-tag--danger">{metrics.bugCount} bug{metrics.bugCount !== 1 ? 's' : ''}</span>}
                                 {plan.completedAt && <span className="tp-tag tp-tag--neutral">Done {new Date(plan.completedAt).toLocaleDateString()}</span>}
@@ -859,7 +858,7 @@ export function TestPlansPage() {
                           </td>
                           <td>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                              <span className="tp-req-chip">📋 {reqCount} req{reqCount !== 1 ? 's' : ''}</span>
+                              <span className="tp-req-chip">{reqCount} req{reqCount !== 1 ? 's' : ''}</span>
                               {metrics.scopeTotal > 0 && <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>{metrics.scopeTotal} cases</span>}
                             </div>
                           </td>
@@ -930,7 +929,7 @@ export function TestPlansPage() {
                             {plan.name}
                           </button>
                           {plan.description && <p className="tp-card-desc">{plan.description}</p>}
-                          {parentMs && <span className="tp-milestone-chip" style={{ marginTop: 4, display: 'inline-flex' }}>🏁 {parentMs.name}</span>}
+                          {parentMs && <span className="tp-milestone-chip" style={{ marginTop: 4, display: 'inline-flex' }}>{parentMs.name}</span>}
                         </div>
                         <button
                           className={`tp-status-toggle ${plan.status === 'Completed' ? 'tp-status-toggle--done' : 'tp-status-toggle--open'}`}
@@ -952,7 +951,7 @@ export function TestPlansPage() {
                         {metrics.scopeFailed > 0 && (
                           <div className="tp-card-meta-item">
                             <span className="tp-card-meta-label">Failed</span>
-                            <span style={{ color: '#a93030', fontWeight: 700 }}>{metrics.scopeFailed}</span>
+                            <span style={{ color: 'var(--danger)', fontWeight: 700 }}>{metrics.scopeFailed}</span>
                           </div>
                         )}
                       </div>
@@ -1029,7 +1028,7 @@ export function TestPlansPage() {
                         <div className="ms-card-left">
                           {milestone.status === 'Completed' ? (
                             <>
-                              <div className="ms-card-countdown">✓</div>
+                              <div className="ms-card-countdown">Done</div>
                               <div className="ms-card-countdown-label">Shipped</div>
                             </>
                           ) : metrics.overdue ? (
@@ -1070,11 +1069,11 @@ export function TestPlansPage() {
 
                         <div className="ms-card-meta-row">
                           {milestone.dueDate && (
-                            <span>📅 {new Date(milestone.dueDate).toLocaleDateString()}</span>
+                            <span>{new Date(milestone.dueDate).toLocaleDateString()}</span>
                           )}
                           {metrics.totalPlans > 0 && <span>{metrics.totalPlans} plan{metrics.totalPlans !== 1 ? 's' : ''}</span>}
                           {metrics.scopeTotal > 0 && <span>{metrics.scopeTotal} cases</span>}
-                          {metrics.bugCount > 0 && <span style={{ color: '#a93030' }}>{metrics.bugCount} bug{metrics.bugCount !== 1 ? 's' : ''}</span>}
+                          {metrics.bugCount > 0 && <span style={{ color: 'var(--danger)' }}>{metrics.bugCount} bug{metrics.bugCount !== 1 ? 's' : ''}</span>}
                         </div>
 
                         <PlanDots linkedPlans={metrics.linkedPlans} runs={runs} requirements={requirements} testCases={testCases} bugs={bugs} />

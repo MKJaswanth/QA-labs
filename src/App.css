@@ -9410,11 +9410,11 @@ a.rr-bar-leg:hover { opacity: 0.75; color: var(--text-strong); }
   background: var(--surface);
   display: flex;
   flex-direction: column;
-  transition: box-shadow 0.18s, transform 0.18s;
+  transition: box-shadow 0.15s, border-color 0.15s;
 }
 .ms-card:hover {
-  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-  transform: translateY(-2px);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  border-color: var(--border-strong);
 }
 
 .ms-card-hdr {
@@ -9424,9 +9424,9 @@ a.rr-bar-leg:hover { opacity: 0.75; color: var(--text-strong); }
   align-items: flex-start;
   gap: 10px;
 }
-.ms-card--success .ms-card-hdr { background: #f0fdf4; }
-.ms-card--warning .ms-card-hdr { background: #fffbeb; }
-.ms-card--danger  .ms-card-hdr { background: #fef2f2; }
+.ms-card--success .ms-card-hdr,
+.ms-card--warning .ms-card-hdr,
+.ms-card--danger  .ms-card-hdr,
 .ms-card--neutral .ms-card-hdr { background: var(--soft-bg); }
 
 .ms-card-left  { display: flex; flex-direction: column; gap: 2px; }
@@ -9438,9 +9438,9 @@ a.rr-bar-leg:hover { opacity: 0.75; color: var(--text-strong); }
   letter-spacing: -0.5px;
   line-height: 1;
 }
-.ms-card--success .ms-card-countdown { color: #16a34a; }
-.ms-card--warning .ms-card-countdown { color: #d97706; }
-.ms-card--danger  .ms-card-countdown { color: #dc2626; }
+.ms-card--success .ms-card-countdown { color: var(--success); }
+.ms-card--warning .ms-card-countdown { color: var(--warning); }
+.ms-card--danger  .ms-card-countdown { color: var(--danger); }
 .ms-card--neutral .ms-card-countdown { color: var(--text-muted); }
 
 .ms-card-countdown-label {
@@ -9529,9 +9529,9 @@ a.rr-bar-leg:hover { opacity: 0.75; color: var(--text-strong); }
   transition: transform 0.1s;
 }
 .ms-plan-dot:hover { transform: scale(1.5); }
-.ms-plan-dot--pass  { background: #22c55e; }
-.ms-plan-dot--fail  { background: #ef4444; }
-.ms-plan-dot--block { background: #f59e0b; }
+.ms-plan-dot--pass  { background: var(--success); }
+.ms-plan-dot--fail  { background: var(--danger); }
+.ms-plan-dot--block { background: var(--warning); }
 .ms-plan-dot--none  { background: var(--border); }
 
 .ms-card-footer {
@@ -9552,9 +9552,9 @@ a.rr-bar-leg:hover { opacity: 0.75; color: var(--text-strong); }
   border: 1px solid;
   overflow: hidden;
 }
-.ms-readiness-banner--success { background: #f0fdf4; border-color: #bbf7d0; }
-.ms-readiness-banner--warning { background: #fffbeb; border-color: #fde68a; }
-.ms-readiness-banner--danger  { background: #fef2f2; border-color: #fecaca; }
+.ms-readiness-banner--success,
+.ms-readiness-banner--warning,
+.ms-readiness-banner--danger  { background: var(--soft-bg); border-color: var(--border); }
 
 .ms-readiness-block {
   display: flex;
@@ -9571,9 +9571,9 @@ a.rr-bar-leg:hover { opacity: 0.75; color: var(--text-strong); }
   line-height: 1;
   letter-spacing: -1.5px;
 }
-.ms-readiness-banner--success .ms-readiness-big { color: #16a34a; }
-.ms-readiness-banner--warning .ms-readiness-big { color: #d97706; }
-.ms-readiness-banner--danger  .ms-readiness-big { color: #dc2626; }
+.ms-readiness-banner--success .ms-readiness-big { color: var(--success); }
+.ms-readiness-banner--warning .ms-readiness-big { color: var(--warning); }
+.ms-readiness-banner--danger  .ms-readiness-big { color: var(--danger); }
 
 .ms-readiness-label {
   font-size: 10px;
