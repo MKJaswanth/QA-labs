@@ -532,14 +532,14 @@ export function RequirementsPage() {
         {totalReqs === 0 ? (
           <div className="req-empty-state">
             <div className="req-empty-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
                 <path d="m9 11 3 3L22 4" />
               </svg>
             </div>
             <h3>No requirements yet</h3>
             <p>Add your first requirement and link the test cases that verify it.</p>
-            <button className="primary-button" type="button" onClick={openAdd}>+ Add requirement</button>
+            <button className="primary-button" type="button" onClick={openAdd}>Add your first requirement</button>
           </div>
         ) : (
           <div className="table-wrap">

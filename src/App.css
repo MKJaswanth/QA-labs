@@ -4763,14 +4763,15 @@ button { font-family: inherit; }
   gap: 24px;
   padding: 18px 20px;
   margin-bottom: 16px;
-  border: 1px solid var(--border);
+  border: 1px solid #c7d9ff;
+  border-left: 3px solid #3b82f6;
   border-radius: 12px;
-  background: var(--surface);
+  background: #f0f4ff;
   box-shadow: var(--shadow-sm);
 }
 .req-coverage-summary { flex: 1; min-width: 0; }
 .req-coverage-hero { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
-.req-coverage-rate { font-size: 36px; font-weight: 850; color: var(--text-strong); line-height: 1; letter-spacing: -0.04em; }
+.req-coverage-rate { font-size: 36px; font-weight: 850; color: #2563eb; line-height: 1; letter-spacing: -0.04em; }
 .req-coverage-pct { font-size: 18px; font-weight: 700; }
 .req-coverage-meta strong { font-size: 11px; font-weight: 800; color: var(--text-muted); letter-spacing: 0.05em; text-transform: uppercase; }
 .req-coverage-meta span { display: block; font-size: 12px; color: var(--text-muted); margin-top: 1px; }
@@ -4822,7 +4823,7 @@ button { font-family: inherit; }
 .req-progress-fill { display: block; height: 100%; border-radius: inherit; background: var(--success); transition: width 0.3s ease; }
 .req-progress-pct { font-size: 11px; font-weight: 700; color: var(--text-muted); min-width: 32px; text-align: right; }
 .req-empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px 24px; text-align: center; }
-.req-empty-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 14px; background: var(--accent-soft); color: var(--accent); margin-bottom: 14px; }
+.req-empty-icon { display: grid; place-items: center; width: 64px; height: 64px; border-radius: 16px; background: #e8f0fe; color: #3b82f6; margin-bottom: 16px; }
 .req-empty-state h3 { margin: 0 0 4px; font-size: 15px; color: var(--text-strong); font-weight: 700; }
 .req-empty-state p { margin: 0 0 16px; font-size: 13px; color: var(--text-muted); max-width: 280px; line-height: 1.5; }
 .empty-table-message { display: block; text-align: center; padding: 24px; color: var(--text-soft); font-size: 13px; }
@@ -8598,6 +8599,52 @@ a.cov-chip:hover {
 .cov-summary-strip {
   cursor: default;
 }
+
+/* Coverage Matrix health indicator banner */
+.cov-health-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 20px;
+  margin-bottom: 0;
+}
+.cov-health-banner--healthy {
+  background: color-mix(in srgb, #22c55e 8%, white);
+  border-bottom: 1px solid color-mix(in srgb, #22c55e 25%, transparent);
+}
+.cov-health-banner--at-risk {
+  background: color-mix(in srgb, #f59e0b 8%, white);
+  border-bottom: 1px solid color-mix(in srgb, #f59e0b 25%, transparent);
+}
+.cov-health-banner--critical {
+  background: color-mix(in srgb, #ef4444 8%, white);
+  border-bottom: 1px solid color-mix(in srgb, #ef4444 25%, transparent);
+}
+.cov-health-icon {
+  font-size: 12px;
+  font-weight: 900;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.cov-health-banner--healthy .cov-health-icon { color: #15803d; background: color-mix(in srgb, #22c55e 18%, white); }
+.cov-health-banner--at-risk .cov-health-icon { color: #b45309; background: color-mix(in srgb, #f59e0b 18%, white); }
+.cov-health-banner--critical .cov-health-icon { color: #b91c1c; background: color-mix(in srgb, #ef4444 18%, white); }
+.cov-health-text { flex: 1; }
+.cov-health-text strong { display: block; font-size: 13px; font-weight: 700; }
+.cov-health-banner--healthy .cov-health-text strong { color: #15803d; }
+.cov-health-banner--at-risk .cov-health-text strong { color: #b45309; }
+.cov-health-banner--critical .cov-health-text strong { color: #b91c1c; }
+.cov-health-text span { font-size: 12px; color: var(--text-muted); }
+.cov-health-bar { width: 100px; height: 4px; border-radius: 2px; background: rgba(0,0,0,0.1); overflow: hidden; flex-shrink: 0; }
+.cov-health-bar-fill { display: block; height: 100%; border-radius: 2px; transition: width 0.4s ease; }
+.cov-health-banner--healthy .cov-health-bar-fill { background: #22c55e; }
+.cov-health-banner--at-risk .cov-health-bar-fill { background: #f59e0b; }
+.cov-health-banner--critical .cov-health-bar-fill { background: #ef4444; }
 
 /* ── Reports page stacked bar legend ─────────────────────────────────────── */
 .rr-bar-legend {

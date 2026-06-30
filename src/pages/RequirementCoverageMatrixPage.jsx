@@ -140,6 +140,24 @@ export function RequirementCoverageMatrixPage() {
         description="Requirement-to-test-case coverage overview with latest execution status."
       />
 
+      {/* Health indicator banner */}
+      {totalReqs > 0 && (
+        <div className={`cov-health-banner cov-health-banner--${verifiedPct >= 80 ? 'healthy' : verifiedPct >= 50 ? 'at-risk' : 'critical'}`}>
+          <div className="cov-health-icon">
+            {verifiedPct >= 80 ? '✓' : verifiedPct >= 50 ? '!' : '✕'}
+          </div>
+          <div className="cov-health-text">
+            <strong>
+              {verifiedPct >= 80 ? 'Coverage healthy' : verifiedPct >= 50 ? 'Coverage at risk' : 'Coverage needs attention'}
+            </strong>
+            <span>{verifiedPct}% of requirements verified · {verified} of {totalReqs} have all tests passing</span>
+          </div>
+          <div className="cov-health-bar">
+            <span className="cov-health-bar-fill" style={{ width: `${verifiedPct}%` }} />
+          </div>
+        </div>
+      )}
+
       {/* Summary Strip */}
       {totalReqs > 0 && (
         <section className="tp-summary-strip cov-summary-strip">
@@ -236,7 +254,7 @@ export function RequirementCoverageMatrixPage() {
         {totalReqs === 0 ? (
           <div className="empty-state">
             <div className="req-empty-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
                 <path d="m9 11 3 3L22 4" />
               </svg>
