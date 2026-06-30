@@ -35,6 +35,7 @@ const TestRunsPage = lazy(() => import('./pages/TestRunsPage').then(m => ({ defa
 const TestPlansPage = lazy(() => import('./pages/TestPlansPage').then(m => ({ default: m.TestPlansPage })))
 const ActivityPage = lazy(() => import('./pages/ActivityPage').then(m => ({ default: m.ActivityPage })))
 const WorkspaceSettingsPage = lazy(() => import('./pages/WorkspaceSettingsPage').then(m => ({ default: m.WorkspaceSettingsPage })))
+const ProjectDashboardPage = lazy(() => import('./pages/ProjectDashboardPage').then(m => ({ default: m.ProjectDashboardPage })))
 const JoinPage = lazy(() => import('./pages/JoinPage').then(m => ({ default: m.JoinPage })))
 const PublicReportPage = lazy(() => import('./pages/PublicReportPage').then(m => ({ default: m.PublicReportPage })))
 import './App.css'
@@ -92,6 +93,7 @@ const appRoutes = (
       <Route path="/reports" element={<ReportsPage />} />
       <Route path="/activity" element={<ActivityPage />} />
       <Route path="/backup" element={<BackupPage />} />
+      <Route path="/projects/:projectId/dashboard" element={<ProjectDashboardPage />} />
       <Route path="/projects/:projectId/test-cases" element={<TestCasesPage />} />
       <Route path="/projects/:projectId/test-cases/:testCaseId" element={<TestCaseDetailPage />} />
       <Route path="/projects/:projectId/requirements" element={<RequirementsPage />} />

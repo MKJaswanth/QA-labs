@@ -26,6 +26,7 @@ const globalNav = [
 ]
 
 const projectNav = [
+  { label: 'Dashboard', path: 'dashboard', icon: 'dashboard' },
   { label: 'Test cases', path: 'test-cases', icon: 'cases' },
   { label: 'Requirements', path: 'requirements', icon: 'requirements' },
   { label: 'Coverage Matrix', path: 'coverage-matrix', icon: 'matrix' },
