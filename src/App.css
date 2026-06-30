@@ -8511,6 +8511,137 @@ label.req-tc-option:hover { background: var(--soft-bg); }
   .cov-col-verdict  { width: 25%; }
 }
 
+/* ── Coverage Matrix enhancements ─────────────────────────────────────────── */
+.cov-chip {
+  text-decoration: none;
+  cursor: default;
+  transition: opacity 0.15s;
+}
+a.cov-chip, .cov-chip[href] {
+  cursor: pointer;
+}
+a.cov-chip:hover {
+  opacity: 0.75;
+  text-decoration: none;
+}
+
+/* Row-level verdict coloring */
+.cov-row--failing td { background: color-mix(in srgb, #ef4444 4%, transparent); }
+.cov-row--verified td { background: color-mix(in srgb, #22c55e 3%, transparent); }
+
+/* Verdict cell with expand toggle */
+.cov-verdict-cell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: nowrap;
+}
+.cov-expand-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 9px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s;
+  padding: 0;
+}
+.cov-expand-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+/* Expanded TC row */
+.cov-expanded-row > td {
+  padding: 0 !important;
+  background: var(--soft-bg);
+  border-bottom: 2px solid var(--border);
+}
+.cov-expanded-inner {
+  padding: 12px 20px 16px;
+  border-top: 2px solid var(--accent);
+}
+.cov-expanded-inner .cov-tc-table {
+  background: var(--surface);
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.cov-tc-row--fail td { background: color-mix(in srgb, #ef4444 6%, transparent); }
+.cov-tc-row--block td { background: color-mix(in srgb, #7f1d1d 5%, transparent); }
+.cov-tc-row--pass td { background: color-mix(in srgb, #22c55e 3%, transparent); }
+
+/* Clickable summary strip cards */
+.cov-filter-card {
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-radius: 8px;
+  background: transparent;
+}
+.cov-filter-card:hover {
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+.cov-filter-card--active {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  outline-offset: -2px;
+}
+.cov-summary-strip {
+  cursor: default;
+}
+
+/* ── Reports page stacked bar legend ─────────────────────────────────────── */
+.rr-bar-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+}
+.rr-bar-leg {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: opacity 0.15s;
+}
+a.rr-bar-leg:hover { opacity: 0.75; color: var(--text-strong); }
+.rr-bar-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.rr-bar-dot--passed  { background: #1a6b37; }
+.rr-bar-dot--failed  { background: #a93030; }
+.rr-bar-dot--blocker { background: #7f1d1d; }
+.rr-bar-dot--skipped { background: #4d5570; }
+.rr-bar-dot--pending { background: #d97706; }
+.rr-bar-leg--passed  { color: #1a6b37; }
+.rr-bar-leg--failed  { color: #a93030; }
+.rr-bar-leg--blocker { color: #7f1d1d; }
+
+/* Stacked bar link segments */
+.rr-stacked-seg--link {
+  cursor: pointer;
+  transition: opacity 0.15s;
+  text-decoration: none;
+}
+.rr-stacked-seg--link:hover {
+  opacity: 0.75;
+}
+
 
 /* ── Comments Panel ─────────────────────────────────────────────── */
 .comments-panel { display: flex; flex-direction: column; gap: 16px; }

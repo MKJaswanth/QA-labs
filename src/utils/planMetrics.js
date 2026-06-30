@@ -17,16 +17,24 @@ export function getPlanTestCases(plan, requirements = [], testCases = []) {
 }
 
 export function getPlanMetrics(plan, runs = [], requirements = [], testCases = [], bugs = []) {
-  const linkedRuns = runs.filter((r) => r.testPlanId === plan?.id)
+  // Scope-based metrics — derived from Plan → Requirements → Test Cases
+  const scopeCases = getPlanTestCases(plan, requirements, testCases)
+  const scopeTotal = scopeCases.length
+  const scopeCaseIds = new Set(scopeCases.map((tc) => tc.id))
+
+  // Include explicitly linked runs AND runs that executed in-scope test cases
+  const linkedRuns = runs.filter((r) => {
+    if (r.testPlanId === plan?.id) return true
+    if (scopeTotal > 0 && Array.isArray(r.cases)) {
+      return r.cases.some((rc) => rc.testCaseId && scopeCaseIds.has(rc.testCaseId))
+    }
+    return false
+  })
   const completedRuns = linkedRuns.filter(isRunComplete)
 
   // Run-level aggregates (kept for backward compat and display)
   const runTotalCases = linkedRuns.reduce((s, r) => s + (r.total ?? 0), 0)
   const runPassedCases = linkedRuns.reduce((s, r) => s + (r.passed ?? 0), 0)
-
-  // Scope-based metrics — derived from Plan → Requirements → Test Cases
-  const scopeCases = getPlanTestCases(plan, requirements, testCases)
-  const scopeTotal = scopeCases.length
 
   // Build a map of the latest status for each in-scope case from linked runs
   const latestStatus = {}
@@ -36,7 +44,7 @@ export function getPlanMetrics(plan, runs = [], requirements = [], testCases = [
   )
   chronoRuns.forEach((run) => {
     ;(run.cases || []).forEach((rc) => {
-      if (rc.testCaseId) latestStatus[rc.testCaseId] = rc.status
+      if (rc.testCaseId && scopeCaseIds.has(rc.testCaseId)) latestStatus[rc.testCaseId] = rc.status
     })
   })
 
@@ -92,8 +100,6 @@ export function getMilestoneMetrics(milestone, plans = [], runs = [], requiremen
   ])
   const linkedPlans = plans.filter((p) => planIds.has(p.id))
   const linkedPlanIds = new Set(linkedPlans.map((p) => p.id))
-  const linkedRuns = runs.filter((r) => r.testPlanId && linkedPlanIds.has(r.testPlanId))
-  const completedRuns = linkedRuns.filter(isRunComplete)
 
   // Aggregate scope across all linked plans
   const allScopeCaseIds = new Set()
@@ -102,6 +108,16 @@ export function getMilestoneMetrics(milestone, plans = [], runs = [], requiremen
     cases.forEach((tc) => allScopeCaseIds.add(tc.id))
   })
   const scopeTotal = allScopeCaseIds.size
+
+  // Include explicitly linked runs AND runs that executed in-scope test cases
+  const linkedRuns = runs.filter((r) => {
+    if (r.testPlanId && linkedPlanIds.has(r.testPlanId)) return true
+    if (scopeTotal > 0 && Array.isArray(r.cases)) {
+      return r.cases.some((rc) => rc.testCaseId && allScopeCaseIds.has(rc.testCaseId))
+    }
+    return false
+  })
+  const completedRuns = linkedRuns.filter(isRunComplete)
 
   // Latest status per case from all milestone-linked runs
   const latestStatus = {}

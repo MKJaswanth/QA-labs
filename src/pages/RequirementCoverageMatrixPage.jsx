@@ -8,6 +8,7 @@ import { useTestRuns } from '../hooks/useTestRuns'
 import { normalizeTestStatus, STATUS_TONE } from '../utils/status'
 
 const PRIORITY_ORDER = { High: 0, Medium: 1, Low: 2 }
+const enc = (v) => encodeURIComponent(v)
 
 /**
  * Build a map of testCaseId → latest execution status from the most recent run.
@@ -35,6 +36,8 @@ export function RequirementCoverageMatrixPage() {
   const [search, setSearch] = useState('')
   const [priorityFilter, setPriorityFilter] = useState('All')
   const [coverageFilter, setCoverageFilter] = useState('All')
+  const [expandedReqId, setExpandedReqId] = useState(null)
+  const toggleExpand = (id) => setExpandedReqId((prev) => (prev === id ? null : id))
 
   const tcById = useMemo(() => new Map(testCases.map((tc) => [tc.id, tc])), [testCases])
   const latestStatusMap = useMemo(() => buildLatestStatusMap(runs), [runs])
@@ -139,36 +142,52 @@ export function RequirementCoverageMatrixPage() {
 
       {/* Summary Strip */}
       {totalReqs > 0 && (
-        <section className="tp-summary-strip">
+        <section className="tp-summary-strip cov-summary-strip">
           <div className="tp-summary-card">
             <span className="tp-summary-label">Total</span>
             <span className="tp-summary-value">{totalReqs}</span>
             <span className="tp-summary-sub">requirements</span>
           </div>
           <div className="tp-summary-divider" />
-          <div className="tp-summary-card">
+          <button
+            type="button"
+            className={`tp-summary-card cov-filter-card${coverageFilter === 'Verified' ? ' cov-filter-card--active' : ''}`}
+            onClick={() => setCoverageFilter(coverageFilter === 'Verified' ? 'All' : 'Verified')}
+          >
             <span className="tp-summary-label">Verified</span>
             <span className="tp-summary-value tp-summary-value--rate">{verifiedPct}%</span>
             <span className="tp-summary-sub">{verified} of {totalReqs}</span>
-          </div>
+          </button>
           <div className="tp-summary-divider" />
-          <div className="tp-summary-card">
+          <button
+            type="button"
+            className={`tp-summary-card cov-filter-card${coverageFilter === 'Covered' ? ' cov-filter-card--active' : ''}`}
+            onClick={() => setCoverageFilter(coverageFilter === 'Covered' ? 'All' : 'Covered')}
+          >
             <span className="tp-summary-label">Covered</span>
             <span className="tp-summary-value">{covered}</span>
             <span className="tp-summary-sub">have test cases</span>
-          </div>
+          </button>
           <div className="tp-summary-divider" />
-          <div className="tp-summary-card">
+          <button
+            type="button"
+            className={`tp-summary-card cov-filter-card${coverageFilter === 'Uncovered' ? ' cov-filter-card--active' : ''}`}
+            onClick={() => setCoverageFilter(coverageFilter === 'Uncovered' ? 'All' : 'Uncovered')}
+          >
             <span className="tp-summary-label">Uncovered</span>
             <span className="tp-summary-value" style={{ color: uncovered > 0 ? 'var(--danger, #dc2626)' : undefined }}>{uncovered}</span>
             <span className="tp-summary-sub">no test cases</span>
-          </div>
+          </button>
           <div className="tp-summary-divider" />
-          <div className="tp-summary-card">
+          <button
+            type="button"
+            className={`tp-summary-card cov-filter-card${coverageFilter === 'Failing' ? ' cov-filter-card--active' : ''}`}
+            onClick={() => setCoverageFilter(coverageFilter === 'Failing' ? 'All' : 'Failing')}
+          >
             <span className="tp-summary-label">Failing</span>
             <span className="tp-summary-value" style={{ color: failing > 0 ? 'var(--danger, #dc2626)' : undefined }}>{failing}</span>
             <span className="tp-summary-sub">need attention</span>
-          </div>
+          </button>
         </section>
       )}
 
@@ -251,150 +270,155 @@ export function RequirementCoverageMatrixPage() {
                   <th>Priority</th>
                   <th>Cases</th>
                   <th>Latest Statuses</th>
-                  <th>Pass Rate</th>
+                  <th>Pass rate</th>
                   <th>Coverage</th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map(({ req, tcStatuses, total, passed, failed, blocked, pending, verdict, verdictTone, pct }) => (
-                  <tr key={req.id} className={total === 0 ? 'cov-row--uncovered' : ''}>
-                    <td className="mono tc-id">
-                      <Link className="text-link" to={`/projects/${projectId}/requirements/${req.id}`}>
-                        {req.key || 'View'}
-                      </Link>
-                    </td>
-                    <td className="title-cell">
-                      <Link
-                        className="text-link"
-                        to={`/projects/${projectId}/requirements/${req.id}`}
-                        style={{ fontWeight: 700, textDecoration: 'none' }}
-                      >
-                        {req.title}
-                      </Link>
-                      {req.description && (
-                        <p className="req-desc" style={{ marginTop: '2px', fontSize: '11.5px' }}>{req.description}</p>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`tp-tag tp-tag--${(req.priority || 'Medium').toLowerCase() === 'high' ? 'danger' : (req.priority || 'Medium').toLowerCase() === 'low' ? 'neutral' : 'pending'}`}>
-                        {req.priority || 'Medium'}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      {total === 0 ? (
-                        <span className="req-cov-none" style={{ color: 'var(--danger, #dc2626)', fontWeight: 700 }}>0</span>
-                      ) : (
-                        <span className="tp-rate-num">{total}</span>
-                      )}
-                    </td>
-                    <td>
-                      {tcStatuses.length === 0 ? (
-                        <span className="muted-text">—</span>
-                      ) : (
-                        <div className="cov-status-chips">
-                          {passed > 0 && (
-                            <span className="cov-chip cov-chip--passed" title={`${passed} passed`}>
-                              <span className="cov-chip-dot cov-chip-dot--passed" />
-                              {passed} Pass
-                            </span>
-                          )}
-                          {failed > 0 && (
-                            <span className="cov-chip cov-chip--failed" title={`${failed} failed`}>
-                              <span className="cov-chip-dot cov-chip-dot--failed" />
-                              {failed} Fail
-                            </span>
-                          )}
-                          {blocked > 0 && (
-                            <span className="cov-chip cov-chip--blocker" title={`${blocked} blocked`}>
-                              <span className="cov-chip-dot cov-chip-dot--blocker" />
-                              {blocked} Block
-                            </span>
-                          )}
-                          {pending > 0 && (
-                            <span className="cov-chip cov-chip--pending" title={`${pending} pending`}>
-                              <span className="cov-chip-dot cov-chip-dot--pending" />
-                              {pending} Pend
-                            </span>
-                          )}
-                        </div>
-                      )}
-                    </td>
-                    <td>
-                      {total > 0 ? (
-                        <div className="req-progress-cell">
-                          <div className="req-progress-track">
-                            <span className="req-progress-fill" style={{ width: `${pct}%` }} />
+                  <>
+                    <tr
+                      key={req.id}
+                      className={`cov-matrix-row ${
+                        total === 0 ? 'cov-row--uncovered'
+                        : verdict === 'Failing' || verdict === 'Blocked' ? 'cov-row--failing'
+                        : verdict === 'Verified' ? 'cov-row--verified'
+                        : ''
+                      }`}
+                    >
+                      <td className="mono tc-id">
+                        <Link className="text-link" to={`/projects/${projectId}/requirements/${req.id}`}>
+                          {req.key || 'View'}
+                        </Link>
+                      </td>
+                      <td className="title-cell">
+                        <Link
+                          className="text-link"
+                          to={`/projects/${projectId}/requirements/${req.id}`}
+                          style={{ fontWeight: 700, textDecoration: 'none' }}
+                        >
+                          {req.title}
+                        </Link>
+                        {req.description && (
+                          <p className="req-desc" style={{ marginTop: '2px', fontSize: '11.5px' }}>{req.description}</p>
+                        )}
+                      </td>
+                      <td>
+                        <span className={`tp-tag tp-tag--${(req.priority || 'Medium').toLowerCase() === 'high' ? 'danger' : (req.priority || 'Medium').toLowerCase() === 'low' ? 'neutral' : 'pending'}`}>
+                          {req.priority || 'Medium'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {total === 0 ? (
+                          <span style={{ color: 'var(--danger, #dc2626)', fontWeight: 700 }}>0</span>
+                        ) : (
+                          <span className="tp-rate-num">{total}</span>
+                        )}
+                      </td>
+                      <td>
+                        {tcStatuses.length === 0 ? (
+                          <span className="muted-text">—</span>
+                        ) : (
+                          <div className="cov-status-chips">
+                            {passed > 0 && (
+                              <Link to={`/projects/${projectId}/test-cases?status=Pass`} className="cov-chip cov-chip--passed" title={`${passed} passed — view passed cases`}>
+                                <span className="cov-chip-dot cov-chip-dot--passed" />
+                                {passed} Pass
+                              </Link>
+                            )}
+                            {failed > 0 && (
+                              <Link to={`/projects/${projectId}/test-cases?status=Fail`} className="cov-chip cov-chip--failed" title={`${failed} failed — view failed cases`}>
+                                <span className="cov-chip-dot cov-chip-dot--failed" />
+                                {failed} Fail
+                              </Link>
+                            )}
+                            {blocked > 0 && (
+                              <Link to={`/projects/${projectId}/test-cases?status=Blocker`} className="cov-chip cov-chip--blocker" title={`${blocked} blocked — view blocked cases`}>
+                                <span className="cov-chip-dot cov-chip-dot--blocker" />
+                                {blocked} Block
+                              </Link>
+                            )}
+                            {pending > 0 && (
+                              <Link to={`/projects/${projectId}/test-cases?status=${enc('Not Executed')}`} className="cov-chip cov-chip--pending" title={`${pending} not executed`}>
+                                <span className="cov-chip-dot cov-chip-dot--pending" />
+                                {pending} Pend
+                              </Link>
+                            )}
                           </div>
-                          <span className="req-progress-pct">{pct}%</span>
+                        )}
+                      </td>
+                      <td>
+                        {total > 0 ? (
+                          <div className="seg-progress">
+                            <div className="seg-bar">
+                              <span className="seg-pass" style={{ width: `${Math.round((passed / total) * 100)}%` }} />
+                              <span className="seg-fail" style={{ width: `${Math.round((failed / total) * 100)}%` }} />
+                              <span className="seg-block" style={{ width: `${Math.round((blocked / total) * 100)}%` }} />
+                            </div>
+                            <span className="seg-pct">{pct}% pass</span>
+                          </div>
+                        ) : (
+                          <span className="muted-text">—</span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="cov-verdict-cell">
+                          <StatusPill tone={verdictTone}>{verdict}</StatusPill>
+                          {total > 0 && (
+                            <button
+                              className="cov-expand-btn"
+                              type="button"
+                              onClick={() => toggleExpand(req.id)}
+                              title={expandedReqId === req.id ? 'Collapse' : 'Show test cases'}
+                              aria-label={expandedReqId === req.id ? 'Collapse' : 'Show test cases'}
+                            >
+                              {expandedReqId === req.id ? '▲' : '▼'}
+                            </button>
+                          )}
                         </div>
-                      ) : (
-                        <span className="muted-text">—</span>
-                      )}
-                    </td>
-                    <td>
-                      <StatusPill tone={verdictTone}>{verdict}</StatusPill>
-                    </td>
-                  </tr>
+                      </td>
+                    </tr>
+                    {expandedReqId === req.id && (
+                      <tr key={`${req.id}-expanded`} className="cov-expanded-row">
+                        <td colSpan={7} style={{ padding: 0 }}>
+                          <div className="cov-expanded-inner">
+                            <table className="cov-tc-table">
+                              <thead>
+                                <tr>
+                                  <th>TC ID</th>
+                                  <th>Title</th>
+                                  <th>Module</th>
+                                  <th>Priority</th>
+                                  <th>Latest Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {tcStatuses.map(({ tc, status }) => (
+                                  <tr key={tc.id} className={status === 'Fail' ? 'cov-tc-row--fail' : status === 'Blocker' ? 'cov-tc-row--block' : status === 'Pass' ? 'cov-tc-row--pass' : ''}>
+                                    <td className="mono tc-id">{tc.sourceTcId || tc.id.slice(0, 8).toUpperCase()}</td>
+                                    <td>
+                                      <Link className="text-link" to={`/projects/${projectId}/test-cases/${tc.id}`}>{tc.title}</Link>
+                                    </td>
+                                    <td>{tc.module || '—'}</td>
+                                    <td>{tc.priority || '—'}</td>
+                                    <td>
+                                      <span className={`status-pill status-pill--${STATUS_TONE[status] ?? 'pending'}`}>{status}</span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </>
                 ))}
               </tbody>
             </table>
           </div>
         )}
 
-        {/* Expanded TC details section for each requirement */}
-        {filtered.length > 0 && filtered.some((r) => r.tcStatuses.length > 0) && (
-          <div className="cov-matrix-details">
-            <h3 className="cov-details-heading">Linked Test Case Details</h3>
-            {filtered.filter((r) => r.tcStatuses.length > 0).map(({ req, tcStatuses }) => (
-              <div key={req.id} className="cov-req-detail-block">
-                <div className="cov-req-detail-header">
-                  <span className="mono tc-id">{req.key || 'Requirement'}</span>
-                  <span style={{ fontWeight: 700 }}>{req.title}</span>
-                  <StatusPill tone={
-                    tcStatuses.every((t) => t.status === 'Pass') ? 'passed'
-                      : tcStatuses.some((t) => t.status === 'Blocker') ? 'blocker'
-                        : tcStatuses.some((t) => t.status === 'Fail') ? 'failed'
-                          : 'pending'
-                  }>
-                    {tcStatuses.filter((t) => t.status === 'Pass').length}/{tcStatuses.length} pass
-                  </StatusPill>
-                </div>
-                <div className="table-wrap">
-                  <table className="cov-tc-table">
-                    <thead>
-                      <tr>
-                        <th>TC ID</th>
-                        <th>Title</th>
-                        <th>Module</th>
-                        <th>Priority</th>
-                        <th>Latest Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tcStatuses.map(({ tc, status }) => (
-                        <tr key={tc.id}>
-                          <td className="mono tc-id">{tc.sourceTcId || tc.id.slice(0, 8).toUpperCase()}</td>
-                          <td>
-                            <Link className="text-link" to={`/projects/${projectId}/test-cases/${tc.id}`}>
-                              {tc.title}
-                            </Link>
-                          </td>
-                          <td>{tc.module || '—'}</td>
-                          <td>{tc.priority || '—'}</td>
-                          <td>
-                            <span className={`status-pill status-pill--${STATUS_TONE[status] ?? 'pending'}`}>
-                              {status}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
       </section>
     </>
   )

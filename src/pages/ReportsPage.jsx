@@ -46,6 +46,7 @@ export function ReportsPage() {
   const firstFailedProject = firstProjectWith((r) => r.failed > 0)
   const firstPendingProject = firstProjectWith((r) => r.pending > 0)
   const firstStaleProject = firstProjectWith((r) => r.total > 0 && r.noRecentRun)
+  const firstPassedProject = firstProjectWith((r) => r.passed > 0)
 
   const bugSeverityLink = (severity) => {
     const id = firstProjectWith((r) => (severity === 'Critical' ? r.critical : severity === 'Major' ? r.major : r.minor) > 0)
@@ -245,11 +246,11 @@ export function ReportsPage() {
 
   // ── Status distribution for the minimal bar ───────────────────────────
   const statusBreakdown = [
-    { label: 'Pass', value: totals.passed, tone: 'passed' },
-    { label: 'Fail', value: totals.failed, tone: 'failed' },
-    { label: 'Blocker', value: totals.blocker, tone: 'blocker' },
-    { label: 'Skipped', value: totals.skipped, tone: 'skipped' },
-    { label: 'Pending', value: totals.pending, tone: 'pending' },
+    { label: 'Pass', value: totals.passed, tone: 'passed', to: firstPassedProject ? `/projects/${firstPassedProject}/test-cases?status=Pass` : null },
+    { label: 'Fail', value: totals.failed, tone: 'failed', to: firstFailedProject ? `/projects/${firstFailedProject}/test-cases?status=Fail` : null },
+    { label: 'Blocker', value: totals.blocker, tone: 'blocker', to: firstBlockerProject ? `/projects/${firstBlockerProject}/test-cases?status=Blocker` : null },
+    { label: 'Skipped', value: totals.skipped, tone: 'skipped', to: null },
+    { label: 'Pending', value: totals.pending, tone: 'pending', to: firstPendingProject ? `/projects/${firstPendingProject}/test-cases?status=${enc('Not Executed')}` : null },
   ].filter((s) => s.value > 0)
 
   // Empty state
@@ -296,34 +297,49 @@ export function ReportsPage() {
           <span className={`rr-readiness-label status-text--${overallReadiness.tone}`}>{overallReadiness.label}</span>
         </div>
         <div className="rr-banner-stats">
-          <div className="rr-stat">
-            <span className="rr-stat-val">{passRate}%</span>
+          <Link to={firstPassedProject ? `/projects/${firstPassedProject}/test-cases?status=Pass` : '/projects'} className="rr-stat rr-stat-link">
+            <span className="rr-stat-val" style={{ color: '#1a6b37' }}>{passRate}%</span>
             <span className="rr-stat-label">Pass rate</span>
-          </div>
-          <div className="rr-stat">
-            <span className="rr-stat-val">{executed}<span className="rr-stat-dim">/{totals.total}</span></span>
-            <span className="rr-stat-label">Executed</span>
-          </div>
+          </Link>
+          <Link to={firstFailedProject ? `/projects/${firstFailedProject}/test-cases?status=Fail` : '/projects'} className="rr-stat rr-stat-link">
+            <span className="rr-stat-val" style={{ color: totals.failed > 0 ? '#a93030' : undefined }}>{totals.failed}</span>
+            <span className="rr-stat-label">Failed</span>
+          </Link>
           <Link to={firstOpenBugProject ? `/projects/${firstOpenBugProject}/bugs?status=Open` : '/projects'} className="rr-stat rr-stat-link">
             <span className="rr-stat-val">{totals.openBugs}</span>
             <span className="rr-stat-label">Open bugs</span>
           </Link>
           <Link to={firstBlockerProject ? `/projects/${firstBlockerProject}/test-cases?status=Blocker` : '/projects'} className="rr-stat rr-stat-link">
-            <span className="rr-stat-val">{totals.blocker}</span>
+            <span className="rr-stat-val" style={{ color: totals.blocker > 0 ? '#7f1d1d' : undefined }}>{totals.blocker}</span>
             <span className="rr-stat-label">Blockers</span>
           </Link>
         </div>
         {totals.total > 0 && (
           <div className="rr-banner-bar">
             <div className="rr-stacked-bar">
-              {statusBreakdown.map((s) => (
-                <span
-                  key={s.label}
-                  className={`rr-stacked-seg rr-stacked-seg--${s.tone}`}
-                  style={{ flex: s.value }}
-                  title={`${s.label}: ${s.value}`}
-                />
-              ))}
+              {statusBreakdown.map((s) => {
+                const BarTag = s.to ? Link : 'span'
+                return (
+                  <BarTag
+                    key={s.label}
+                    className={`rr-stacked-seg rr-stacked-seg--${s.tone}${s.to ? ' rr-stacked-seg--link' : ''}`}
+                    style={{ flex: s.value }}
+                    title={`${s.label}: ${s.value}${s.to ? ' — click to filter' : ''}`}
+                    {...(s.to ? { to: s.to } : {})}
+                  />
+                )
+              })}
+            </div>
+            <div className="rr-bar-legend">
+              {statusBreakdown.map((s) => {
+                const LegTag = s.to ? Link : 'span'
+                return (
+                  <LegTag key={s.label} className={`rr-bar-leg rr-bar-leg--${s.tone}`} {...(s.to ? { to: s.to } : {})}>
+                    <span className={`rr-bar-dot rr-bar-dot--${s.tone}`} />
+                    {s.value} {s.label}
+                  </LegTag>
+                )
+              })}
             </div>
           </div>
         )}
