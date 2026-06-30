@@ -159,16 +159,19 @@ function coverageOf(req, tcById, runStatusMap = {}) {
   const linked = (req.testCaseIds || []).map((id) => tcById.get(id)).filter(Boolean)
   const total = linked.length
   const getStatus = (tc) => normalizeTestStatus(runStatusMap[tc.id] || tc.status)
-  const passed = linked.filter((t) => getStatus(t) === 'Pass').length
-  const failed = linked.filter((t) => ['Fail', 'Blocker'].includes(getStatus(t))).length
+  const passed  = linked.filter((t) => getStatus(t) === 'Pass').length
+  const failed  = linked.filter((t) => ['Fail', 'Blocker'].includes(getStatus(t))).length
+  const skipped = linked.filter((t) => getStatus(t) === 'Skipped').length
   const pending = linked.filter((t) => getStatus(t) === 'Not Executed').length
+  // Verified: no failures AND every non-skipped TC has passed (skipped don't block verification)
+  const isVerified = total > 0 && failed === 0 && passed > 0 && (passed + skipped) === total
   let verdict
-  if (total === 0) verdict = { label: 'Not covered', tone: 'failed' }
-  else if (failed > 0) verdict = { label: 'Failing', tone: 'failed' }
-  else if (passed === total) verdict = { label: 'Verified', tone: 'passed' }
-  else verdict = { label: 'In progress', tone: 'pending' }
+  if (total === 0)  verdict = { label: 'Not covered', tone: 'failed' }
+  else if (failed > 0)  verdict = { label: 'Failing', tone: 'failed' }
+  else if (isVerified)  verdict = { label: 'Verified', tone: 'passed' }
+  else                  verdict = { label: 'In progress', tone: 'pending' }
   const pct = total > 0 ? Math.round((passed / total) * 100) : 0
-  return { linked, total, passed, failed, pending, verdict, pct }
+  return { linked, total, passed, failed, skipped, pending, verdict, pct }
 }
 
 export function RequirementsPage() {
@@ -205,22 +208,24 @@ export function RequirementsPage() {
     return map
   }, [runs])
 
-  // Newest requirements first.
-  const rows = [...requirements]
-    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
-    .map((req) => ({ req, cov: coverageOf(req, tcById, runStatusMap) }))
+  // Newest requirements first — wrapped in useMemo so stats stay reactive to run/tc changes.
+  const rows = useMemo(() => (
+    [...requirements]
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))
+      .map((req) => ({ req, cov: coverageOf(req, tcById, runStatusMap) }))
+  ), [requirements, tcById, runStatusMap])
 
   const filteredRows = useMemo(() => {
     return rows.filter(({ req }) => requirementMatchesSearch(req, search))
   }, [rows, search])
 
-  const uncoveredCount = rows.filter(({ cov }) => cov.total === 0).length
-
-  const totalReqs = requirements.length
-  const coveredReqs = rows.filter((r) => r.cov.total > 0).length
-  const verifiedReqs = rows.filter((r) => r.cov.verdict.label === 'Verified').length
-  const failingReqs = rows.filter((r) => r.cov.verdict.label === 'Failing').length
-  const verifiedPct = totalReqs ? Math.round((verifiedReqs / totalReqs) * 100) : 0
+  const totalReqs      = rows.length
+  const coveredReqs    = rows.filter((r) => r.cov.total > 0).length
+  const verifiedReqs   = rows.filter((r) => r.cov.verdict.label === 'Verified').length
+  const failingReqs    = rows.filter((r) => r.cov.verdict.label === 'Failing').length
+  const inProgressReqs = rows.filter((r) => r.cov.verdict.label === 'In progress').length
+  const uncoveredCount = rows.filter((r) => r.cov.total === 0).length
+  const verifiedPct    = totalReqs ? Math.round((verifiedReqs / totalReqs) * 100) : 0
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
@@ -571,40 +576,36 @@ export function RequirementsPage() {
               </div>
             </div>
             <div className="req-coverage-bar">
-              {totalReqs > 0 && (
-                <>
-                  {verifiedReqs > 0 && <span className="req-coverage-seg req-coverage-seg--verified" style={{ flex: verifiedReqs }} title={`Verified: ${verifiedReqs}`} />}
-                  {(() => { const inProg = coveredReqs - verifiedReqs; return inProg > 0 && <span className="req-coverage-seg req-coverage-seg--inprogress" style={{ flex: inProg }} title={`In progress: ${inProg}`} /> })()}
-                  {(() => { const uncovered = totalReqs - coveredReqs; return uncovered > 0 && <span className="req-coverage-seg req-coverage-seg--uncovered" style={{ flex: uncovered }} title={`Not covered: ${uncovered}`} /> })()}
-                </>
-              )}
+              {verifiedReqs > 0 && <span className="req-coverage-seg req-coverage-seg--verified" style={{ flex: verifiedReqs }} title={`Verified: ${verifiedReqs}`} />}
+              {inProgressReqs > 0 && <span className="req-coverage-seg req-coverage-seg--inprogress" style={{ flex: inProgressReqs }} title={`In progress: ${inProgressReqs}`} />}
+              {failingReqs > 0 && <span className="req-coverage-seg req-coverage-seg--failing" style={{ flex: failingReqs }} title={`Failing: ${failingReqs}`} />}
+              {uncoveredCount > 0 && <span className="req-coverage-seg req-coverage-seg--uncovered" style={{ flex: uncoveredCount }} title={`Uncovered: ${uncoveredCount}`} />}
             </div>
           </div>
           <div className="req-coverage-stats">
-            <div className="req-stat">
-              <span className="req-stat-dot req-stat-dot--total" />
-              <span className="req-stat-label">Total</span>
+            <div className="req-stat req-stat--total">
               <strong>{totalReqs}</strong>
+              <span className="req-stat-label">Total</span>
             </div>
-            <div className="req-stat">
-              <span className="req-stat-dot req-stat-dot--covered" />
-              <span className="req-stat-label">Covered</span>
+            <div className="req-stat req-stat--covered">
               <strong>{coveredReqs}</strong>
+              <span className="req-stat-label">Covered</span>
             </div>
-            <div className="req-stat">
-              <span className="req-stat-dot req-stat-dot--verified" />
+            <div className="req-stat req-stat--verified">
+              <strong className={verifiedReqs > 0 ? 'req-stat-val--good' : ''}>{verifiedReqs}</strong>
               <span className="req-stat-label">Verified</span>
-              <strong>{verifiedReqs}</strong>
             </div>
-            <div className="req-stat">
-              <span className="req-stat-dot req-stat-dot--failing" />
+            <div className="req-stat req-stat--inprogress">
+              <strong>{inProgressReqs}</strong>
+              <span className="req-stat-label">In Progress</span>
+            </div>
+            <div className="req-stat req-stat--failing">
+              <strong className={failingReqs > 0 ? 'req-stat-val--bad' : ''}>{failingReqs}</strong>
               <span className="req-stat-label">Failing</span>
-              <strong>{failingReqs}</strong>
             </div>
-            <div className="req-stat">
-              <span className="req-stat-dot req-stat-dot--uncovered" />
-              <span className="req-stat-label">Uncovered</span>
+            <div className="req-stat req-stat--uncovered">
               <strong>{uncoveredCount}</strong>
+              <span className="req-stat-label">Uncovered</span>
             </div>
           </div>
         </section>
