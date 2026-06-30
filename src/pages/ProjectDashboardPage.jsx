@@ -296,15 +296,9 @@ export function ProjectDashboardPage() {
                       </StatusPill>
                       <Link to={`${base}/bugs`} className="proj-bug-title text-link">{bug.title}</Link>
                     </div>
-                    <div className="proj-bug-row-meta">
-                      <span className="proj-bug-status">{bug.status || 'Open'}</span>
-                      {bug.reportedDate && (
-                        <>
-                          <span className="proj-bug-sep">·</span>
-                          <span className="proj-bug-date">{new Date(bug.reportedDate).toLocaleDateString()}</span>
-                        </>
-                      )}
-                    </div>
+                    {bug.reportedDate && (
+                      <span className="proj-bug-date">{new Date(bug.reportedDate).toLocaleDateString()}</span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -337,12 +331,14 @@ export function ProjectDashboardPage() {
                 <span className="proj-cov-pct">{stats.reqCovPct}% covered</span>
               </div>
             </div>
-            <div className="proj-coverage-chips">
-              {stats.passed > 0 && <span className="proj-cov-chip proj-cov-chip--pass">{stats.passed} passed</span>}
-              {stats.failed > 0 && <span className="proj-cov-chip proj-cov-chip--fail">{stats.failed} failed</span>}
-              {stats.blockers > 0 && <span className="proj-cov-chip proj-cov-chip--block">{stats.blockers} blocked</span>}
-              {requirements.length > 0 && <span className="proj-cov-chip">{stats.coveredReqs}/{requirements.length} reqs covered</span>}
-            </div>
+            {(stats.passed > 0 || stats.failed > 0 || stats.blockers > 0 || requirements.length > 0) && (
+              <div className="proj-coverage-chips">
+                {stats.passed > 0 && <span className="proj-cov-chip proj-cov-chip--pass">{stats.passed} passed</span>}
+                {stats.failed > 0 && <span className="proj-cov-chip proj-cov-chip--fail">{stats.failed} failed</span>}
+                {stats.blockers > 0 && <span className="proj-cov-chip proj-cov-chip--block">{stats.blockers} blocked</span>}
+                {requirements.length > 0 && <span className="proj-cov-chip">{stats.coveredReqs}/{requirements.length} reqs covered</span>}
+              </div>
+            )}
           </section>
         </div>
       </div>
