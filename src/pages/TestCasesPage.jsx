@@ -73,6 +73,7 @@ export function TestCasesPage() {
   const [showFolderModal, setShowFolderModal] = useState(false)
   const [folderModalName, setFolderModalName] = useState('')
   const [folderModalModules, setFolderModalModules] = useState(new Set())
+  const [folderModalEditTarget, setFolderModalEditTarget] = useState(null) // null = create, string = folder being edited
   const [fTag, setFTag] = useState(() => searchParams.get('tag') || '')
   const [pageSize, setPageSize] = useState(10)
   const [page, setPage] = useState(1)
@@ -357,18 +358,61 @@ export function TestCasesPage() {
     return Object.values(map).sort((a, b) => a.name.localeCompare(b.name))
   }, [testCases])
 
-  const handleCreateFolder = () => {
+  // For each module, which folder owns it (if any)?
+  const moduleToFolder = useMemo(() => {
+    const map = {}
+    testCases.forEach((tc) => {
+      const m = tc.module || ''
+      const f = tc.folder || ''
+      if (!f) return
+      if (!map[m]) map[m] = f
+      else if (map[m] !== f) map[m] = '__mixed__'
+    })
+    return map
+  }, [testCases])
+
+  const openEditFolder = (folder) => {
+    const modulesInFolder = new Set(
+      testCases.filter((tc) => (tc.folder || '') === folder.name).map((tc) => tc.module || '')
+    )
+    setFolderModalEditTarget(folder.name)
+    setFolderModalName(folder.name)
+    setFolderModalModules(modulesInFolder)
+    setShowFolderModal(true)
+  }
+
+  const handleSaveFolder = () => {
     const name = folderModalName.trim()
     if (!name || folderModalModules.size === 0) return
-    testCases.forEach((tc) => {
-      if (folderModalModules.has(tc.module || '')) {
-        updateTestCase({ ...tc, folder: name, updatedAt: new Date().toISOString() })
-      }
-    })
-    toast.success(`Folder "${name}" created`)
+
+    if (folderModalEditTarget) {
+      testCases.forEach((tc) => {
+        const m = tc.module || ''
+        const wasInFolder = (tc.folder || '') === folderModalEditTarget
+        const isInNewSet = folderModalModules.has(m)
+
+        if (wasInFolder && !isInNewSet) {
+          updateTestCase({ ...tc, folder: '', updatedAt: new Date().toISOString() })
+        } else if (isInNewSet && !wasInFolder) {
+          updateTestCase({ ...tc, folder: name, updatedAt: new Date().toISOString() })
+        } else if (wasInFolder && name !== folderModalEditTarget) {
+          updateTestCase({ ...tc, folder: name, updatedAt: new Date().toISOString() })
+        }
+      })
+      toast.success(`Folder "${name}" updated`)
+    } else {
+      testCases.forEach((tc) => {
+        if (folderModalModules.has(tc.module || '')) {
+          updateTestCase({ ...tc, folder: name, updatedAt: new Date().toISOString() })
+        }
+      })
+      toast.success(`Folder "${name}" created`)
+    }
+
     setShowFolderModal(false)
     setFolderModalName('')
     setFolderModalModules(new Set())
+    setFolderModalEditTarget(null)
     setFFolder(name)
   }
 
@@ -498,7 +542,7 @@ export function TestCasesPage() {
                   className="tc-folder-add-btn"
                   type="button"
                   title="Create folder from modules"
-                  onClick={() => { setFolderModalName(''); setFolderModalModules(new Set()); setShowFolderModal(true) }}
+                  onClick={() => { setFolderModalEditTarget(null); setFolderModalName(''); setFolderModalModules(new Set()); setShowFolderModal(true) }}
                 >
                   +
                 </button>
@@ -521,6 +565,16 @@ export function TestCasesPage() {
                     <span className="tc-folder-icon">📁</span>
                     <span className="tc-folder-name">{folder.name}</span>
                     <span className="tc-folder-count">{folder.count}</span>
+                    {isLead && (
+                      <button
+                        className="tc-folder-edit-btn"
+                        type="button"
+                        title="Edit folder"
+                        onClick={(e) => { e.stopPropagation(); openEditFolder(folder) }}
+                      >
+                        <PencilIcon width={11} height={11} />
+                      </button>
+                    )}
                   </div>
                   {fFolder === folder.name && (
                     <ul className="tc-module-list">
@@ -1097,7 +1151,10 @@ export function TestCasesPage() {
       )}
 
       {showFolderModal && (
-        <Modal title="Create folder" onClose={() => setShowFolderModal(false)}>
+        <Modal
+          title={folderModalEditTarget ? `Edit folder: ${folderModalEditTarget}` : 'Create folder'}
+          onClose={() => { setShowFolderModal(false); setFolderModalEditTarget(null) }}
+        >
           <div className="modal-form">
             <label>
               Folder name <span className="required">*</span>
@@ -1106,52 +1163,65 @@ export function TestCasesPage() {
                 value={folderModalName}
                 onChange={(e) => setFolderModalName(e.target.value)}
                 placeholder="e.g. LoginSuite, Regression…"
-                list="folder-modal-datalist"
               />
-              <datalist id="folder-modal-datalist">
-                {folderTree.map((f) => <option key={f.name} value={f.name} />)}
-              </datalist>
             </label>
             <div className="folder-modal-modules-label">
-              <span>Select modules to include</span>
+              <span>Modules in this folder</span>
               <button
                 type="button"
                 className="link-btn"
-                onClick={() => setFolderModalModules(
-                  folderModalModules.size === allModulesList.length
-                    ? new Set()
-                    : new Set(allModulesList.map((m) => m.name))
-                )}
+                onClick={() => {
+                  const available = allModulesList
+                    .filter((m) => !moduleToFolder[m.name] || moduleToFolder[m.name] === folderModalEditTarget)
+                    .map((m) => m.name)
+                  const allAvailableSelected = available.every((n) => folderModalModules.has(n))
+                  setFolderModalModules(allAvailableSelected ? new Set() : new Set(available))
+                }}
               >
-                {folderModalModules.size === allModulesList.length ? 'Deselect all' : 'Select all'}
+                {(() => {
+                  const available = allModulesList.filter((m) => !moduleToFolder[m.name] || moduleToFolder[m.name] === folderModalEditTarget)
+                  return available.every((m) => folderModalModules.has(m.name)) ? 'Deselect all' : 'Select all'
+                })()}
               </button>
             </div>
             <div className="folder-modal-module-list">
-              {allModulesList.map((mod) => (
-                <label key={mod.name || '__nomod__'} className="folder-modal-module-item">
-                  <input
-                    type="checkbox"
-                    checked={folderModalModules.has(mod.name)}
-                    onChange={() => setFolderModalModules((prev) => {
-                      const next = new Set(prev)
-                      next.has(mod.name) ? next.delete(mod.name) : next.add(mod.name)
-                      return next
-                    })}
-                  />
-                  <span className="folder-modal-module-name">{mod.name || '(no module)'}</span>
-                  <span className="tc-folder-count">{mod.count}</span>
-                </label>
-              ))}
+              {allModulesList.map((mod) => {
+                const ownerFolder = moduleToFolder[mod.name] || ''
+                const isOwnedByOther = ownerFolder && ownerFolder !== folderModalEditTarget && ownerFolder !== '__mixed__'
+                const isMixed = ownerFolder === '__mixed__'
+                const isDisabled = isOwnedByOther || isMixed
+                return (
+                  <label
+                    key={mod.name || '__nomod__'}
+                    className={`folder-modal-module-item${isDisabled ? ' folder-modal-module-item--disabled' : ''}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={folderModalModules.has(mod.name)}
+                      disabled={isDisabled}
+                      onChange={() => !isDisabled && setFolderModalModules((prev) => {
+                        const next = new Set(prev)
+                        next.has(mod.name) ? next.delete(mod.name) : next.add(mod.name)
+                        return next
+                      })}
+                    />
+                    <span className="folder-modal-module-name">{mod.name || '(no module)'}</span>
+                    {isOwnedByOther && <span className="folder-modal-module-tag">in {ownerFolder}</span>}
+                    {isMixed && <span className="folder-modal-module-tag">mixed</span>}
+                    <span className="tc-folder-count">{mod.count}</span>
+                  </label>
+                )
+              })}
             </div>
             <div className="modal-footer" style={{ marginTop: 16 }}>
-              <button type="button" className="secondary-button" onClick={() => setShowFolderModal(false)}>Cancel</button>
+              <button type="button" className="secondary-button" onClick={() => { setShowFolderModal(false); setFolderModalEditTarget(null) }}>Cancel</button>
               <button
                 type="button"
                 className="primary-button"
                 disabled={!folderModalName.trim() || folderModalModules.size === 0}
-                onClick={handleCreateFolder}
+                onClick={handleSaveFolder}
               >
-                Create folder
+                {folderModalEditTarget ? 'Save changes' : 'Create folder'}
               </button>
             </div>
           </div>

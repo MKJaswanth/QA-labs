@@ -804,9 +804,39 @@ select:focus {
   color: var(--text-strong);
   transition: background 0.1s;
 }
-.folder-modal-module-item:hover { background: var(--soft-bg); }
+.folder-modal-module-item:hover:not(.folder-modal-module-item--disabled) { background: var(--soft-bg); }
+.folder-modal-module-item--disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .folder-modal-module-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+.folder-modal-module-item--disabled input[type="checkbox"] { cursor: not-allowed; }
 .folder-modal-module-name { flex: 1; }
+.folder-modal-module-tag {
+  font-size: 10.5px;
+  background: var(--soft-bg);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
+}
+
+.tc-folder-edit-btn {
+  opacity: 0;
+  background: none;
+  border: none;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  transition: opacity 0.15s, background 0.12s, color 0.12s;
+  margin-left: auto;
+}
+.tc-folder-header:hover .tc-folder-edit-btn { opacity: 1; }
+.tc-folder-edit-btn:hover { background: var(--accent-soft); color: var(--accent); }
 
 .table-wrap {
   overflow-x: auto;
