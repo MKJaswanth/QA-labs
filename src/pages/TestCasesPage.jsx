@@ -40,10 +40,11 @@ const BUG_STATUSES = ['Open', 'In review', 'Closed']
 
 const getTestCaseDisplayId = (tc) => tc.sourceTcId || tc.id.slice(0, 8).toUpperCase()
 
-const blankForm = () => ({
-  title: '', module: '', scenario: '', preconditions: '', priority: 'Med',
+const blankForm = (overrides = {}) => ({
+  title: '', folder: '', module: '', scenario: '', preconditions: '', priority: 'Med',
   assignee: '', steps: [''], testData: '', expected: '', actual: '',
   status: 'Not Executed', devRemarks: '', qaRemarks: '', tags: [],
+  ...overrides,
 })
 
 export function TestCasesPage() {
@@ -67,6 +68,7 @@ export function TestCasesPage() {
   const [fPriority, setFPriority] = useState(() => searchParams.get('priority') || '')
   const [fStatus, setFStatus] = useState(() => searchParams.get('status') || '')
   const [fModule, setFModule] = useState(() => searchParams.get('module') || '')
+  const [fFolder, setFFolder] = useState(() => searchParams.get('folder') || '')
   const [fAssignee, setFAssignee] = useState(() => searchParams.get('assignee') || '')
   const [fTag, setFTag] = useState(() => searchParams.get('tag') || '')
   const [pageSize, setPageSize] = useState(10)
@@ -86,9 +88,9 @@ export function TestCasesPage() {
 
   const openAddModal = useCallback(() => {
     setEditTc(null)
-    setForm(blankForm())
+    setForm(blankForm({ folder: fFolder, module: fModule }))
     setShowAdd(true)
-  }, [])
+  }, [fFolder, fModule])
 
   const handleEscape = useCallback(() => {
     if (showAdd) {
@@ -227,8 +229,8 @@ export function TestCasesPage() {
   }
 
   const setBug = (k) => (e) => setBugForm((f) => ({ ...f, [k]: e.target.value }))
-  const clearFilters = () => { setSearch(''); setFPriority(''); setFStatus(''); setFModule(''); setFAssignee(''); setFTag(''); setPage(1) }
-  const activeFilterCount = [search, fPriority, fStatus, fModule, fAssignee, fTag].filter(Boolean).length
+  const clearFilters = () => { setSearch(''); setFPriority(''); setFStatus(''); setFModule(''); setFAssignee(''); setFTag(''); setFFolder(''); setPage(1) }
+  const activeFilterCount = [search, fPriority, fStatus, fModule, fAssignee, fTag, fFolder].filter(Boolean).length
   const filterByTag = (tag) => { setFTag((cur) => (cur === tag ? '' : tag)); setPage(1) }
 
   const handleAdd = (e) => {
@@ -257,7 +259,7 @@ export function TestCasesPage() {
   const openEdit = (tc) => {
     setEditTc(tc)
     setForm({
-      title: tc.title || '', module: tc.module || '', scenario: tc.scenario || '',
+      title: tc.title || '', folder: tc.folder || '', module: tc.module || '', scenario: tc.scenario || '',
       preconditions: tc.preconditions || '', priority: tc.priority || 'Med',
       assignee: tc.assignee || '', steps: tc.steps?.length ? [...tc.steps] : [''],
       testData: tc.testData || '', expected: tc.expected || '', actual: tc.actual || '',
@@ -342,12 +344,37 @@ export function TestCasesPage() {
     addTestCase(clone)
   }
 
-  // Derive unique module values for filter dropdown
-  const modules = [...new Set(testCases.map((t) => t.module).filter(Boolean))]
+  // Folder tree: built from test cases that have a folder field
+  const hasAnyFolder = useMemo(() => testCases.some((tc) => tc.folder), [testCases])
+  const folderTree = useMemo(() => {
+    if (!hasAnyFolder) return []
+    const map = {}
+    testCases.forEach((tc) => {
+      const f = tc.folder || ''
+      if (!f) return
+      if (!map[f]) map[f] = { name: f, count: 0, modules: {} }
+      map[f].count++
+      const m = tc.module || ''
+      if (!map[f].modules[m]) map[f].modules[m] = { name: m, count: 0 }
+      map[f].modules[m].count++
+    })
+    return Object.values(map)
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((f) => ({ ...f, modules: Object.values(f.modules).sort((a, b) => a.name.localeCompare(b.name)) }))
+  }, [testCases, hasAnyFolder])
+
+  // Module list scoped to the active folder when one is selected
+  const modules = useMemo(() => [
+    ...new Set(
+      (fFolder ? testCases.filter((tc) => (tc.folder || '') === fFolder) : testCases)
+        .map((t) => t.module).filter(Boolean)
+    )
+  ], [testCases, fFolder])
   const assignees = [...new Set(testCases.map((t) => t.assignee).filter(Boolean))]
   const allTags = [...new Set(testCases.flatMap((t) => t.tags || []))].sort((a, b) => a.localeCompare(b))
 
   const visible = sortedCases.filter((tc) => {
+    if (fFolder && (tc.folder || '') !== fFolder) return false
     if (search && !tc.title.toLowerCase().includes(search.toLowerCase())) return false
     if (fPriority && tc.priority !== fPriority) return false
     if (fStatus && tc.status !== fStatus) return false
@@ -422,7 +449,52 @@ export function TestCasesPage() {
       </div>
 
       {activeTab === 'cases' ? (
-        <section className="panel">
+        <div className={hasAnyFolder ? 'tc-page-layout' : ''}>
+
+        {/* Folder tree sidebar — only shown when test cases have folder values */}
+        {hasAnyFolder && (
+          <aside className="tc-folder-sidebar">
+            <div className="tc-folder-sidebar-title">Folders</div>
+            <ul className="tc-folder-tree">
+              <li
+                className={`tc-folder-all${!fFolder ? ' tc-folder-all--active' : ''}`}
+                onClick={() => { setFFolder(''); setFModule(''); setPage(1) }}
+              >
+                <span>All test cases</span>
+                <span className="tc-folder-count">{testCases.length}</span>
+              </li>
+              {folderTree.map((folder) => (
+                <li key={folder.name} className="tc-folder-group">
+                  <div
+                    className={`tc-folder-header${fFolder === folder.name ? ' tc-folder-header--active' : ''}`}
+                    onClick={() => { setFFolder((f) => f === folder.name ? '' : folder.name); setFModule(''); setPage(1) }}
+                  >
+                    <span className="tc-folder-icon">📁</span>
+                    <span className="tc-folder-name">{folder.name}</span>
+                    <span className="tc-folder-count">{folder.count}</span>
+                  </div>
+                  {fFolder === folder.name && (
+                    <ul className="tc-module-list">
+                      {folder.modules.map((mod) => (
+                        <li
+                          key={mod.name || '__nomod__'}
+                          className={`tc-module-item${fModule === mod.name ? ' tc-module-item--active' : ''}`}
+                          onClick={(e) => { e.stopPropagation(); setFModule((m) => m === mod.name ? '' : mod.name); setPage(1) }}
+                        >
+                          <span className="tc-module-icon">📂</span>
+                          <span className="tc-module-name">{mod.name || '(no module)'}</span>
+                          <span className="tc-folder-count">{mod.count}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </aside>
+        )}
+
+        <section className="panel tc-main-panel">
           <div className="toolbar">
             <input
               type="search"
@@ -730,6 +802,7 @@ export function TestCasesPage() {
             </div>
           )}
         </section>
+        </div>
       ) : (
         <section className="panel">
           <div className="toolbar">
@@ -880,6 +953,15 @@ export function TestCasesPage() {
               Test Case Title <span className="required">*</span>
               <input autoFocus value={form.title} onChange={set('title')} placeholder="What is being tested?" />
             </label>
+            {hasAnyFolder && (
+              <label>
+                Folder
+                <input value={form.folder} onChange={set('folder')} placeholder="Suite / sheet name…" list="folder-suggestions" />
+                <datalist id="folder-suggestions">
+                  {folderTree.map((f) => <option key={f.name} value={f.name} />)}
+                </datalist>
+              </label>
+            )}
             <div className="form-row">
               <label>
                 Module

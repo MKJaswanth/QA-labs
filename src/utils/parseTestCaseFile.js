@@ -34,7 +34,6 @@ function normaliseStatus(raw) {
 
 function splitSteps(raw) {
   if (!raw) return []
-  // Split on newline, semicolon, or numbered-line pattern "1. " / "1) "
   return String(raw)
     .split(/\r?\n|;|(?=\d+[.)]\s)/)
     .map((s) => s.replace(/^\d+[.)]\s*/, '').trim())
@@ -45,29 +44,11 @@ function normaliseHeader(h) {
   return String(h ?? '').toLowerCase().trim()
 }
 
-/**
- * Parse an ArrayBuffer from a .xlsx/.xls/.csv file.
- * Returns { rows: ParsedRow[] } where each row has { data, errors }.
- */
-export function parseTestCaseFile(buffer, filename) {
-  const ext = filename.split('.').pop().toLowerCase()
-  const type = ext === 'csv' ? 'string' : 'array'
-
-  // Defensive: read with cellDates off, no formula evaluation
-  const wb = XLSX.read(type === 'string' ? new TextDecoder().decode(buffer) : buffer, {
-    type,
-    cellDates: false,
-    cellFormula: false,
-    cellHTML: false,
-  })
-
-  const ws = wb.Sheets[wb.SheetNames[0]]
-  // sheet_to_json with header:1 gives raw arrays — avoids prototype pollution from header row
+/** Parse a single worksheet into rows, tagging each row with the given folder name. */
+function parseSheet(ws, folderName, startRowNum) {
   const raw = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' })
+  if (raw.length < 2) return []
 
-  if (raw.length < 2) return { rows: [] }
-
-  // Map header row → internal keys, using Object.create(null) to avoid prototype pollution
   const headerRow = raw[0]
   const colMap = Object.create(null)
   headerRow.forEach((h, i) => {
@@ -75,25 +56,63 @@ export function parseTestCaseFile(buffer, filename) {
     if (key) colMap[i] = key
   })
 
-  const rows = raw.slice(1).map((cells, rowIdx) => {
-    // Build a plain object from cells using only known columns
-    const data = Object.create(null)
-    Object.keys(colMap).forEach((i) => {
-      data[colMap[i]] = String(cells[i] ?? '').trim()
-    })
-
-    // Validate required fields
-    const errors = REQUIRED
-      .filter((k) => !data[k])
-      .map((k) => {
-        const label = Object.entries(COL).find(([, v]) => v === k)?.[0] ?? k
-        return `Missing: ${label}`
+  return raw.slice(1)
+    .map((cells, rowIdx) => {
+      const data = Object.create(null)
+      Object.keys(colMap).forEach((i) => {
+        data[colMap[i]] = String(cells[i] ?? '').trim()
       })
+      if (folderName) data.folder = folderName
 
-    return { rowNum: rowIdx + 2, data, errors }
-  }).filter((r) => Object.values(r.data).some(Boolean)) // skip fully empty rows
+      const errors = REQUIRED
+        .filter((k) => !data[k])
+        .map((k) => {
+          const label = Object.entries(COL).find(([, v]) => v === k)?.[0] ?? k
+          return `Missing: ${label}`
+        })
 
-  return { rows }
+      return { rowNum: startRowNum + rowIdx, data, errors }
+    })
+    .filter((r) => {
+      // Skip rows where every non-folder field is empty
+      return Object.entries(r.data)
+        .filter(([k]) => k !== 'folder')
+        .some(([, v]) => v)
+    })
+}
+
+/**
+ * Parse an ArrayBuffer from a .xlsx/.xls/.csv file.
+ * Multi-sheet XLSX: each sheet name becomes data.folder on its rows.
+ * Returns { rows, isMultiSheet, sheetNames }.
+ */
+export function parseTestCaseFile(buffer, filename) {
+  const ext = filename.split('.').pop().toLowerCase()
+  const type = ext === 'csv' ? 'string' : 'array'
+
+  const wb = XLSX.read(type === 'string' ? new TextDecoder().decode(buffer) : buffer, {
+    type,
+    cellDates: false,
+    cellFormula: false,
+    cellHTML: false,
+  })
+
+  // Multi-sheet XLSX → each sheet becomes a folder
+  if (ext !== 'csv' && wb.SheetNames.length > 1) {
+    const allRows = []
+    let rowOffset = 2
+    wb.SheetNames.forEach((sheetName) => {
+      const ws = wb.Sheets[sheetName]
+      const sheetRows = parseSheet(ws, sheetName, rowOffset)
+      allRows.push(...sheetRows)
+      rowOffset += sheetRows.length
+    })
+    return { rows: allRows, isMultiSheet: true, sheetNames: wb.SheetNames }
+  }
+
+  // Single sheet (CSV or single-sheet XLSX)
+  const ws = wb.Sheets[wb.SheetNames[0]]
+  return { rows: parseSheet(ws, null, 2), isMultiSheet: false, sheetNames: wb.SheetNames }
 }
 
 /** Convert a validated ParsedRow.data into the app's TestCase model */
@@ -102,6 +121,7 @@ export function rowToTestCase(data) {
     id: newId(),
     createdAt: new Date().toISOString(),
     sourceTcId: data.sourceTcId || '',
+    folder: data.folder || '',
     title: data.title,
     module: data.module || '',
     scenario: data.scenario || '',
