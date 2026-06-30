@@ -3262,6 +3262,21 @@ button { font-family: inherit; }
   flex-wrap: wrap;
 }
 .run-module-filter-bar select { min-width: 180px; }
+.run-name-display-row { display: inline-flex; align-items: center; gap: 8px; }
+.run-name-edit-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: none; border: none; cursor: pointer; padding: 4px;
+  color: var(--text-muted); border-radius: 4px; opacity: 0.6;
+  transition: opacity 0.15s, background 0.15s;
+}
+.run-name-edit-btn:hover { opacity: 1; background: var(--hover-bg, rgba(0,0,0,0.06)); }
+.run-name-edit-row { display: inline-flex; align-items: center; gap: 8px; }
+.run-name-input {
+  font: inherit; font-size: inherit; font-weight: inherit;
+  border: 2px solid var(--primary-color, #2563eb); border-radius: 6px;
+  padding: 2px 8px; background: var(--surface); color: var(--text);
+  min-width: 260px; outline: none;
+}
 .run-selection-actions,
 .run-nav-actions,
 .run-status-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

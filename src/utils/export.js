@@ -49,27 +49,34 @@ export function getReporterName(reportedBy, reportedByName) {
 }
 
 export function exportBugs(bugs, projectName) {
-  const rows = bugs.map((b) => ({
-    'Bug ID':             b.sourceBugId || b.id.slice(0, 8).toUpperCase(),
-    'Title':              b.title,
-    'Description':        b.description,
-    'Module':             b.module,
-    'Severity':           b.severity,
-    'Priority':           b.priority,
-    'Status':             b.status,
-    'Environment':        b.environment,
-    'Build':              b.build,
-    'Steps to Reproduce': b.stepsToReproduce,
-    'Expected Result':    b.expected,
-    'Actual Result':      b.actual,
-    'Assigned To':        b.assignedTo,
-    'Reported By':        getReporterName(b.reportedBy, b.reportedByName),
-    'Reported Date':      b.reportedDate,
-    'Fixed In Build':     b.fixedInBuild,
-    'Retest Status':      b.retestStatus,
-    'Dev Remarks':        b.devRemarks,
-    'QA Remarks':         b.qaRemarks,
-  }))
+  const rows = bugs.map((b) => {
+    const links = (b.evidenceLinks || [])
+      .map((l) => l.label ? `${l.label}: ${l.url}` : l.url)
+      .filter(Boolean)
+      .join(' | ')
+    return {
+      'Bug ID':             b.sourceBugId || b.id.slice(0, 8).toUpperCase(),
+      'Title':              b.title,
+      'Description':        b.description,
+      'Module':             b.module,
+      'Severity':           b.severity,
+      'Priority':           b.priority,
+      'Status':             b.status,
+      'Environment':        b.environment,
+      'Build':              b.build,
+      'Steps to Reproduce': b.stepsToReproduce,
+      'Expected Result':    b.expected,
+      'Actual Result':      b.actual,
+      'Assigned To':        b.assignedTo,
+      'Reported By':        getReporterName(b.reportedBy, b.reportedByName),
+      'Reported Date':      b.reportedDate,
+      'Fixed In Build':     b.fixedInBuild,
+      'Retest Status':      b.retestStatus,
+      'Dev Remarks':        b.devRemarks,
+      'QA Remarks':         b.qaRemarks,
+      'Evidence Links':     links,
+    }
+  })
   const headers = Object.keys(rows[0] ?? {})
   download(toCSV(rows, headers), `${projectName}-bugs.csv`)
 }
