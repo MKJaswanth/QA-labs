@@ -21,6 +21,7 @@ import { STATUS_TONE, TEST_STATUSES, summarizeStatuses } from '../utils/status'
 import { isFirebaseEnabled, auth } from '../utils/firebase'
 import { saveRunDraftRemote, deleteRunDraftRemote, logActivityRemote } from '../utils/remoteStorage'
 import { JUnitUploadModal } from '../components/JUnitUploadModal'
+import { EditBugModal } from '../components/EditBugModal'
 import { testRunMatchesSearch } from '../utils/entitySearch'
 import { useRequirements } from '../hooks/useRequirements'
 import { getPlanTestCases } from '../utils/planMetrics'
@@ -105,7 +106,8 @@ export function TestRunsPage() {
   const toast = useToast()
   const { projects } = useProjects()
   const { testCases, updateTestCase } = useTestCases(projectId)
-  const { bugs, addBug } = useBugs(projectId)
+  const { bugs, addBug, updateBug } = useBugs(projectId)
+  const [editingBug, setEditingBug] = useState(null)
   const { runs, addRun, refresh } = useTestRuns(projectId)
   const { plans, linkRunToPlan } = useTestPlans(projectId)
   const { sharedSteps } = useSharedSteps(projectId)
@@ -1117,9 +1119,14 @@ export function TestRunsPage() {
                   <BugIcon width={14} height={14} />
                   Linked Bug: <strong>{linkedBug.sourceBugId || linkedBug.id.slice(0, 8).toUpperCase()} - {linkedBug.title}</strong>
                 </span>
-                <Link to={`/projects/${projectId}/bugs`} className="text-link" style={{ fontSize: '13px' }}>
-                  View tracker →
-                </Link>
+                <button
+                  type="button"
+                  className="secondary-button"
+                  style={{ fontSize: '12px' }}
+                  onClick={() => setEditingBug(linkedBug)}
+                >
+                  Edit bug
+                </button>
               </div>
             )}
 
@@ -1542,6 +1549,14 @@ export function TestRunsPage() {
           addBug={addBug}
           plans={plans}
           user={user}
+        />
+      )}
+      {editingBug && (
+        <EditBugModal
+          bug={editingBug}
+          projectId={projectId}
+          onSave={(updated) => { updateBug(updated); setEditingBug(null) }}
+          onClose={() => setEditingBug(null)}
         />
       )}
     </>

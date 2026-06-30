@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { PageHeader } from '../components/PageHeader'
 import { StatusPill } from '../components/StatusPill'
+import { EditBugModal } from '../components/EditBugModal'
 import { useTestRuns } from '../hooks/useTestRuns'
 import { useBugs } from '../hooks/useBugs'
 import { STATUS_TONE, TEST_STATUSES, summarizeStatuses } from '../utils/status'
@@ -23,8 +24,9 @@ function getFailureModules(cases = []) {
 export function TestRunDetailPage() {
   const { projectId, runId } = useParams()
   const { runs, updateRun } = useTestRuns(projectId)
-  const { bugs } = useBugs(projectId)
+  const { bugs, updateBug } = useBugs(projectId)
   const [editingName, setEditingName] = useState(false)
+  const [editingBug, setEditingBug] = useState(null)
   const [nameValue, setNameValue] = useState('')
   const nameInputRef = useRef(null)
 
@@ -248,9 +250,14 @@ export function TestRunDetailPage() {
                       {tc.actual || <span className="text-muted">Not recorded</span>}
                       {tc.bugId && activeBugIds.has(tc.bugId) && (
                         <div className="mt-xs">
-                          <Link to={`/projects/${projectId}/bugs`} className="text-link status-text--failed" style={{ fontSize: '0.85em', display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}>
-                            <BugIcon width={12} height={12} /> Bug linked
-                          </Link>
+                          <button
+                            type="button"
+                            className="text-link status-text--failed"
+                            style={{ fontSize: '0.85em', display: 'inline-flex', alignItems: 'center', gap: 4, background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                            onClick={() => setEditingBug(bugs.find((b) => b.id === tc.bugId))}
+                          >
+                            <BugIcon width={12} height={12} /> Bug linked — click to edit
+                          </button>
                         </div>
                       )}
                     </td>
@@ -261,6 +268,15 @@ export function TestRunDetailPage() {
           </div>
         )}
       </section>
+
+      {editingBug && (
+        <EditBugModal
+          bug={editingBug}
+          projectId={projectId}
+          onSave={(updated) => { updateBug(updated); setEditingBug(null) }}
+          onClose={() => setEditingBug(null)}
+        />
+      )}
     </>
   )
 }
