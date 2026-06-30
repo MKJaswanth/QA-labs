@@ -21,13 +21,27 @@ const PRIORITIES = ['High', 'Medium', 'Low']
 
 const blankForm = () => ({ key: '', title: '', description: '', priority: 'Medium', testCaseIds: [] })
 
-function TcPickerSection({ form, testCases, tcModules, tcSearch, setTcSearch, tcModuleFilter, setTcModuleFilter, filteredTcs, toggleTc, addModule, removeModule, fullySelectedModules, availableModules }) {
+function TcPickerSection({ form, testCases, tcFolders, tcFolderFilter, setTcFolderFilter, availableFolders, addFolder, removeFolder, fullySelectedFolders, tcModules, tcSearch, setTcSearch, tcModuleFilter, setTcModuleFilter, filteredTcs, toggleTc, addModule, removeModule, fullySelectedModules, availableModules }) {
   return (
     <div>
       <label>Linked test cases <span className="hint">({form.testCaseIds.length} selected)</span></label>
 
-      {availableModules.length > 0 && (
-        <div className="req-module-add-row">
+      <div className="req-module-add-row">
+        {availableFolders.length > 0 && (
+          <select
+            value=""
+            onChange={(e) => { if (e.target.value) addFolder(e.target.value) }}
+            aria-label="Add all cases from a folder"
+            className="req-module-add-select"
+          >
+            <option value="">+ Add by folder…</option>
+            {availableFolders.map((f) => {
+              const count = testCases.filter((tc) => (tc.folder || '') === f).length
+              return <option key={f} value={f}>{f} ({count} cases)</option>
+            })}
+          </select>
+        )}
+        {availableModules.length > 0 && (
           <select
             value=""
             onChange={(e) => { if (e.target.value) addModule(e.target.value) }}
@@ -40,11 +54,21 @@ function TcPickerSection({ form, testCases, tcModules, tcSearch, setTcSearch, tc
               return <option key={m} value={m}>{m} ({count} cases)</option>
             })}
           </select>
-        </div>
-      )}
+        )}
+      </div>
 
-      {fullySelectedModules.length > 0 && (
+      {(fullySelectedFolders.length > 0 || fullySelectedModules.length > 0) && (
         <div className="req-module-chips">
+          {fullySelectedFolders.map((f) => {
+            const count = testCases.filter((tc) => (tc.folder || '') === f).length
+            return (
+              <span key={`folder:${f}`} className="req-module-chip req-folder-chip">
+                <span className="req-module-chip-name">📁 {f}</span>
+                <span className="req-module-chip-count">{count}</span>
+                <button type="button" className="req-module-chip-remove" onClick={() => removeFolder(f)} aria-label={`Remove folder ${f}`}>×</button>
+              </span>
+            )
+          })}
           {fullySelectedModules.map((m) => {
             const count = testCases.filter((tc) => tc.module === m).length
             return (
@@ -65,6 +89,17 @@ function TcPickerSection({ form, testCases, tcModules, tcSearch, setTcSearch, tc
           placeholder="Search test cases…"
           className="req-tc-search"
         />
+        {tcFolders.length > 0 && (
+          <select
+            value={tcFolderFilter}
+            onChange={(e) => { setTcFolderFilter(e.target.value); setTcModuleFilter('') }}
+            className={`req-tc-module-select${tcFolderFilter ? ' filter-active' : ''}`}
+            aria-label="Filter by folder"
+          >
+            <option value="">All folders</option>
+            {tcFolders.map((f) => <option key={f} value={f}>{f}</option>)}
+          </select>
+        )}
         {tcModules.length > 0 && (
           <select
             value={tcModuleFilter}
@@ -78,11 +113,21 @@ function TcPickerSection({ form, testCases, tcModules, tcSearch, setTcSearch, tc
         )}
       </div>
 
-      {tcModuleFilter && (
-        <span className="req-tc-active-filter">
-          Module: {tcModuleFilter}
-          <button type="button" className="req-tc-filter-clear" onClick={() => setTcModuleFilter('')} aria-label="Clear module filter">×</button>
-        </span>
+      {(tcFolderFilter || tcModuleFilter) && (
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
+          {tcFolderFilter && (
+            <span className="req-tc-active-filter">
+              Folder: {tcFolderFilter}
+              <button type="button" className="req-tc-filter-clear" onClick={() => { setTcFolderFilter(''); setTcModuleFilter('') }} aria-label="Clear folder filter">×</button>
+            </span>
+          )}
+          {tcModuleFilter && (
+            <span className="req-tc-active-filter">
+              Module: {tcModuleFilter}
+              <button type="button" className="req-tc-filter-clear" onClick={() => setTcModuleFilter('')} aria-label="Clear module filter">×</button>
+            </span>
+          )}
+        </div>
       )}
 
       <div className="req-tc-picker">
@@ -141,6 +186,7 @@ export function RequirementsPage() {
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState(blankForm)
   const [tcSearch, setTcSearch] = useState('')
+  const [tcFolderFilter, setTcFolderFilter] = useState('')
   const [tcModuleFilter, setTcModuleFilter] = useState('')
   const [search, setSearch] = useState('')
   const [showImport, setShowImport] = useState(false)
@@ -178,7 +224,7 @@ export function RequirementsPage() {
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const openAdd = () => { setEditing(null); setForm(blankForm()); setTcSearch(''); setTcModuleFilter(''); setShowForm(true) }
+  const openAdd = () => { setEditing(null); setForm(blankForm()); setTcSearch(''); setTcFolderFilter(''); setTcModuleFilter(''); setShowForm(true) }
   const openEdit = (req) => {
     setEditing(req)
     setForm({
@@ -189,6 +235,7 @@ export function RequirementsPage() {
       testCaseIds: req.testCaseIds || [],
     })
     setTcSearch('')
+    setTcFolderFilter('')
     setTcModuleFilter('')
     setShowForm(true)
   }
@@ -197,6 +244,16 @@ export function RequirementsPage() {
     ...f,
     testCaseIds: f.testCaseIds.includes(id) ? f.testCaseIds.filter((x) => x !== id) : [...f.testCaseIds, id],
   }))
+
+  const addFolder = (folderName) => {
+    const ids = testCases.filter((tc) => (tc.folder || '') === folderName).map((tc) => tc.id)
+    setForm((f) => ({ ...f, testCaseIds: [...new Set([...f.testCaseIds, ...ids])] }))
+  }
+
+  const removeFolder = (folderName) => {
+    const ids = new Set(testCases.filter((tc) => (tc.folder || '') === folderName).map((tc) => tc.id))
+    setForm((f) => ({ ...f, testCaseIds: f.testCaseIds.filter((id) => !ids.has(id)) }))
+  }
 
   const addModule = (moduleName) => {
     const moduleIds = testCases.filter((tc) => tc.module === moduleName).map((tc) => tc.id)
@@ -231,8 +288,26 @@ export function RequirementsPage() {
     if (ok) { removeRequirement(req.id); toast.success('Requirement deleted') }
   }
 
-  // Unique module values for the picker filter
-  const tcModules = useMemo(() => [...new Set(testCases.map((t) => t.module).filter(Boolean))].sort(), [testCases])
+  // Unique folder and module values for the picker filter
+  const tcFolders = useMemo(() => [...new Set(testCases.map((t) => t.folder).filter(Boolean))].sort(), [testCases])
+  const tcModules = useMemo(() => {
+    const base = tcFolderFilter ? testCases.filter((tc) => (tc.folder || '') === tcFolderFilter) : testCases
+    return [...new Set(base.map((t) => t.module).filter(Boolean))].sort()
+  }, [testCases, tcFolderFilter])
+
+  // Folders where every test case is already selected
+  const fullySelectedFolders = useMemo(
+    () => tcFolders.filter((f) => {
+      const fCases = testCases.filter((tc) => (tc.folder || '') === f)
+      return fCases.length > 0 && fCases.every((tc) => form.testCaseIds.includes(tc.id))
+    }),
+    [tcFolders, testCases, form.testCaseIds],
+  )
+
+  const availableFolders = useMemo(
+    () => tcFolders.filter((f) => !fullySelectedFolders.includes(f)),
+    [tcFolders, fullySelectedFolders],
+  )
 
   // Modules where every test case is already in form.testCaseIds
   const fullySelectedModules = useMemo(
@@ -251,6 +326,7 @@ export function RequirementsPage() {
   const filteredTcs = useMemo(() => {
     const matched = testCases.filter((tc) => {
       if (!testCaseMatchesSearch(tc, tcSearch)) return false
+      if (tcFolderFilter && (tc.folder || '') !== tcFolderFilter) return false
       if (tcModuleFilter && tc.module !== tcModuleFilter) return false
       return true
     })
@@ -438,6 +514,13 @@ export function RequirementsPage() {
               <TcPickerSection
                 form={form}
                 testCases={testCases}
+                tcFolders={tcFolders}
+                tcFolderFilter={tcFolderFilter}
+                setTcFolderFilter={setTcFolderFilter}
+                availableFolders={availableFolders}
+                addFolder={addFolder}
+                removeFolder={removeFolder}
+                fullySelectedFolders={fullySelectedFolders}
                 tcModules={tcModules}
                 tcSearch={tcSearch}
                 setTcSearch={setTcSearch}
@@ -684,6 +767,13 @@ export function RequirementsPage() {
             <TcPickerSection
               form={form}
               testCases={testCases}
+              tcFolders={tcFolders}
+              tcFolderFilter={tcFolderFilter}
+              setTcFolderFilter={setTcFolderFilter}
+              availableFolders={availableFolders}
+              addFolder={addFolder}
+              removeFolder={removeFolder}
+              fullySelectedFolders={fullySelectedFolders}
               tcModules={tcModules}
               tcSearch={tcSearch}
               setTcSearch={setTcSearch}

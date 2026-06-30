@@ -4686,6 +4686,10 @@ button { font-family: inherit; }
   display: flex; align-items: center;
 }
 .req-module-chip-remove:hover { opacity: 1; }
+.req-folder-chip {
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface));
+  border-color: color-mix(in srgb, var(--accent) 25%, transparent);
+}
 
 /* ── Requirement TC picker toolbar ────────────────────────────────────── */
 .req-tc-toolbar {

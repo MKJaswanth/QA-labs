@@ -246,6 +246,7 @@ export function TestRunsPage() {
   const [runSearch, setRunSearch] = useState('')
   const [casePageSize, setCasePageSize] = useState(25)
   const [casePage, setCasePage] = useState(1)
+  const [caseFolderFilter, setCaseFolderFilter] = useState('')
   const [caseModuleFilter, setCaseModuleFilter] = useState('')
 
   const sortedTestCases = useMemo(
@@ -297,17 +298,24 @@ export function TestRunsPage() {
   const runsStartItem = totalRuns === 0 ? 0 : runsStartIndex + 1
   const runsEndItem = Math.min(runsStartIndex + runsPageSize, totalRuns)
 
-  const availableModules = useMemo(
-    () => [...new Set(testCases.map((tc) => tc.module).filter(Boolean))].sort(),
+  const availableFolders = useMemo(
+    () => [...new Set(testCases.map((tc) => tc.folder).filter(Boolean))].sort(),
     [testCases],
   )
 
+  const availableModules = useMemo(() => {
+    const base = caseFolderFilter ? testCases.filter((tc) => (tc.folder || '') === caseFolderFilter) : testCases
+    return [...new Set(base.map((tc) => tc.module).filter(Boolean))].sort()
+  }, [testCases, caseFolderFilter])
+
   // Case-picker pagination (run setup). Selection (Select all / Clear / checked
   // ids) still operates on the full list, not just the visible page.
-  const moduleFilteredCases = useMemo(
-    () => caseModuleFilter ? sortedTestCases.filter((tc) => tc.module === caseModuleFilter) : sortedTestCases,
-    [sortedTestCases, caseModuleFilter],
-  )
+  const moduleFilteredCases = useMemo(() => {
+    let cases = sortedTestCases
+    if (caseFolderFilter) cases = cases.filter((tc) => (tc.folder || '') === caseFolderFilter)
+    if (caseModuleFilter) cases = cases.filter((tc) => tc.module === caseModuleFilter)
+    return cases
+  }, [sortedTestCases, caseFolderFilter, caseModuleFilter])
   const caseTotal = moduleFilteredCases.length
   const caseTotalPages = Math.max(1, Math.ceil(caseTotal / casePageSize))
   const caseCurrentPage = Math.min(casePage, caseTotalPages)
@@ -830,25 +838,62 @@ export function TestRunsPage() {
             </div>
           </div>
 
-          {availableModules.length > 0 && (
+          {(availableFolders.length > 0 || availableModules.length > 0) && (
             <div className="run-module-filter-bar">
-              <select
-                value={caseModuleFilter}
-                onChange={(e) => { setCaseModuleFilter(e.target.value); setCasePage(1) }}
-                aria-label="Filter cases by module"
-                className={caseModuleFilter ? 'filter-active' : ''}
-              >
-                <option value="">All modules</option>
-                {availableModules.map((m) => <option key={m} value={m}>{m}</option>)}
-              </select>
+              {availableFolders.length > 0 && (
+                <select
+                  value={caseFolderFilter}
+                  onChange={(e) => { setCaseFolderFilter(e.target.value); setCaseModuleFilter(''); setCasePage(1) }}
+                  aria-label="Filter cases by folder"
+                  className={caseFolderFilter ? 'filter-active' : ''}
+                >
+                  <option value="">All folders</option>
+                  {availableFolders.map((f) => <option key={f} value={f}>{f}</option>)}
+                </select>
+              )}
+              {availableModules.length > 0 && (
+                <select
+                  value={caseModuleFilter}
+                  onChange={(e) => { setCaseModuleFilter(e.target.value); setCasePage(1) }}
+                  aria-label="Filter cases by module"
+                  className={caseModuleFilter ? 'filter-active' : ''}
+                >
+                  <option value="">All modules</option>
+                  {availableModules.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              )}
+              {caseFolderFilter && !caseModuleFilter && (
+                <>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      const ids = testCases.filter((tc) => (tc.folder || '') === caseFolderFilter).map((tc) => tc.id)
+                      setSelectedIds((prev) => [...new Set([...prev, ...ids])])
+                    }}
+                  >
+                    Select all in folder
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      const ids = new Set(testCases.filter((tc) => (tc.folder || '') === caseFolderFilter).map((tc) => tc.id))
+                      setSelectedIds((prev) => prev.filter((id) => !ids.has(id)))
+                    }}
+                  >
+                    Deselect folder
+                  </button>
+                </>
+              )}
               {caseModuleFilter && (
                 <>
                   <button
                     type="button"
                     className="secondary-button"
                     onClick={() => {
-                      const moduleIds = testCases.filter((tc) => tc.module === caseModuleFilter).map((tc) => tc.id)
-                      setSelectedIds((prev) => [...new Set([...prev, ...moduleIds])])
+                      const ids = testCases.filter((tc) => tc.module === caseModuleFilter).map((tc) => tc.id)
+                      setSelectedIds((prev) => [...new Set([...prev, ...ids])])
                     }}
                   >
                     Select all in module
@@ -857,8 +902,8 @@ export function TestRunsPage() {
                     type="button"
                     className="secondary-button"
                     onClick={() => {
-                      const moduleIds = new Set(testCases.filter((tc) => tc.module === caseModuleFilter).map((tc) => tc.id))
-                      setSelectedIds((prev) => prev.filter((id) => !moduleIds.has(id)))
+                      const ids = new Set(testCases.filter((tc) => tc.module === caseModuleFilter).map((tc) => tc.id))
+                      setSelectedIds((prev) => prev.filter((id) => !ids.has(id)))
                     }}
                   >
                     Deselect module
