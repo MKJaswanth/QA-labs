@@ -4541,10 +4541,12 @@ button { font-family: inherit; }
 .req-module-add-select {
   flex: 1; font-size: 12.5px; padding: 6px 10px;
   border: 1px dashed var(--accent, #2563eb); border-radius: 6px;
-  background: var(--accent-soft, #eff6ff); color: var(--accent, #2563eb);
+  background-color: var(--accent-soft, #eff6ff);
+  background-image: none !important;
+  color: var(--accent, #2563eb);
   cursor: pointer; font-weight: 600;
 }
-.req-module-add-select:focus { outline: none; border-style: solid; }
+.req-module-add-select:focus { outline: none; border-style: solid; background-image: none !important; }
 .req-module-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .req-module-chip {
   display: inline-flex; align-items: center; gap: 6px;
