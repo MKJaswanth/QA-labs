@@ -18,6 +18,23 @@ import { normalizeTestStatus, TEST_STATUSES, STATUS_TONE } from '../utils/status
 const PLAN_STATUSES = ['Open', 'Completed']
 const MILESTONE_STATUSES = ['Open', 'Completed']
 
+function SegBar({ total, passed, failed, blocked, pct }) {
+  if (!total) return <div className="seg-progress"><span className="seg-no-scope">No scope</span></div>
+  const passPct = Math.round((passed / total) * 100)
+  const failPct = Math.round((failed / total) * 100)
+  const blockPct = Math.round((blocked / total) * 100)
+  return (
+    <div className="seg-progress">
+      <div className="seg-bar">
+        <span className="seg-pass" style={{ width: `${passPct}%` }} />
+        <span className="seg-fail" style={{ width: `${failPct}%` }} />
+        <span className="seg-block" style={{ width: `${blockPct}%` }} />
+      </div>
+      <span className="seg-pct">{pct}% executed</span>
+    </div>
+  )
+}
+
 const blankPlan = () => ({ name: '', description: '', requirementIds: [], milestoneId: '', status: 'Open' })
 const blankMilestone = () => ({ name: '', description: '', dueDate: '', testPlanIds: [], status: 'Open' })
 
@@ -58,8 +75,8 @@ export function TestPlansPage() {
         }
         return true
       })
-      .map((plan) => ({ plan, metrics: getPlanMetrics(plan, runs, requirements, testCases) })),
-  [plans, runs, requirements, testCases, planSearch, planStatusFilter, milestones])
+      .map((plan) => ({ plan, metrics: getPlanMetrics(plan, runs, requirements, testCases, bugs) })),
+  [plans, runs, requirements, testCases, bugs, planSearch, planStatusFilter, milestones])
 
   const milestoneRows = useMemo(() =>
     [...milestones]
@@ -76,8 +93,8 @@ export function TestPlansPage() {
         }
         return true
       })
-      .map((milestone) => ({ milestone, metrics: getMilestoneMetrics(milestone, plans, runs, requirements, testCases) })),
-  [milestones, plans, runs, requirements, testCases, milestoneSearch, milestoneStatusFilter])
+      .map((milestone) => ({ milestone, metrics: getMilestoneMetrics(milestone, plans, runs, requirements, testCases, bugs) })),
+  [milestones, plans, runs, requirements, testCases, bugs, milestoneSearch, milestoneStatusFilter])
 
   // Aggregate summary stats
   const summaryStats = useMemo(() => {
@@ -209,8 +226,10 @@ export function TestPlansPage() {
       setSelectedPlanId(null)
       return null
     }
-    const metrics = getPlanMetrics(planObj, runs, requirements, testCases)
-    const planBugs = bugs.filter(b => metrics.linkedRuns.some(r => r.linkedBugIds?.includes(b.id)))
+    const metrics = getPlanMetrics(planObj, runs, requirements, testCases, bugs)
+    const linkedBugIds = new Set()
+    metrics.linkedRuns.forEach((run) => { (run.cases || []).forEach((rc) => { if (rc.bugId) linkedBugIds.add(rc.bugId) }) })
+    const planBugs = bugs.filter((b) => linkedBugIds.has(b.id))
     const planReqs = requirements.filter((r) => (planObj.requirementIds || []).includes(r.id))
     const scopeCases = getPlanTestCases(planObj, requirements, testCases)
 
@@ -251,9 +270,12 @@ export function TestPlansPage() {
           <div className="req-detail-meta">
             <div><span>Scope</span><strong>{metrics.scopeTotal} cases</strong></div>
             <div><span>Executed</span><strong>{metrics.scopeExecuted}</strong></div>
-            <div><span>Passed</span><strong>{metrics.scopePassed}</strong></div>
+            <div><span>Passed</span><strong style={{ color: '#1a6b37' }}>{metrics.scopePassed}</strong></div>
+            <div><span>Failed</span><strong style={{ color: '#a93030' }}>{metrics.scopeFailed}</strong></div>
+            <div><span>Blocked</span><strong style={{ color: '#7f1d1d' }}>{metrics.scopeBlocked}</strong></div>
             <div><span>Runs</span><strong>{metrics.totalRuns}</strong></div>
             <div><span>Pass rate</span><strong>{metrics.passRate}%</strong></div>
+            {metrics.bugCount > 0 && <div><span>Bugs logged</span><strong>{metrics.bugCount}</strong></div>}
           </div>
 
           <div className="req-progress-cell req-detail-progress">
@@ -497,7 +519,7 @@ export function TestPlansPage() {
       setSelectedMilestoneId(null)
       return null
     }
-    const metrics = getMilestoneMetrics(milestoneObj, plans, runs, requirements, testCases)
+    const metrics = getMilestoneMetrics(milestoneObj, plans, runs, requirements, testCases, bugs)
 
     return (
       <div className="page-entrance">
@@ -537,7 +559,11 @@ export function TestPlansPage() {
             <div><span>Linked plans</span><strong>{metrics.totalPlans}</strong></div>
             <div><span>Total runs</span><strong>{metrics.totalRuns}</strong></div>
             <div><span>Total cases</span><strong>{metrics.totalCases}</strong></div>
+            <div><span>Passed</span><strong style={{ color: '#1a6b37' }}>{metrics.scopePassed}</strong></div>
+            <div><span>Failed</span><strong style={{ color: '#a93030' }}>{metrics.scopeFailed}</strong></div>
+            <div><span>Blocked</span><strong style={{ color: '#7f1d1d' }}>{metrics.scopeBlocked}</strong></div>
             <div><span>Pass rate</span><strong>{metrics.passRate}%</strong></div>
+            {metrics.bugCount > 0 && <div><span>Bugs logged</span><strong>{metrics.bugCount}</strong></div>}
           </div>
 
           <div className="req-progress-cell req-detail-progress">
@@ -788,6 +814,7 @@ export function TestPlansPage() {
                       <th>Plan</th>
                       <th>Progress</th>
                       <th>Pass rate</th>
+                      <th>Health</th>
                       <th>Status</th>
                       <th></th>
                     </tr>
@@ -802,25 +829,43 @@ export function TestPlansPage() {
                             </button>
                             {plan.description && <p className="tp-row-desc">{plan.description}</p>}
                             <div className="tp-row-tags">
-                              {metrics.scopeTotal > 0 && <span className="tp-tag">{metrics.scopeTotal} scope cases</span>}
+                              {metrics.scopeTotal > 0 && <span className="tp-tag">{metrics.scopeTotal} cases</span>}
                               {metrics.totalRuns > 0 && <span className="tp-tag">{metrics.totalRuns} run{metrics.totalRuns !== 1 ? 's' : ''}</span>}
+                              {metrics.bugCount > 0 && <span className="tp-tag tp-tag--danger">{metrics.bugCount} bug{metrics.bugCount !== 1 ? 's' : ''}</span>}
                               {plan.completedAt && (
                                 <span className="tp-tag tp-tag--neutral">
                                   Done {new Date(plan.completedAt).toLocaleDateString()}
                                 </span>
                               )}
                             </div>
+                            {(metrics.scopePassed > 0 || metrics.scopeFailed > 0 || metrics.scopeBlocked > 0) && (
+                              <div className="tp-row-breakdown">
+                                {metrics.scopePassed > 0 && <span className="tp-bd tp-bd--pass">{metrics.scopePassed} passed</span>}
+                                {metrics.scopeFailed > 0 && <span className="tp-bd tp-bd--fail">{metrics.scopeFailed} failed</span>}
+                                {metrics.scopeBlocked > 0 && <span className="tp-bd tp-bd--block">{metrics.scopeBlocked} blocked</span>}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td>
-                          <div className="req-progress-cell">
-                            <div className="req-progress-track">
-                              <span className="req-progress-fill" style={{ width: `${metrics.progressPct}%` }} />
-                            </div>
-                            <span className="req-progress-pct">{metrics.progressPct}%</span>
-                          </div>
+                          <SegBar
+                            total={metrics.scopeTotal}
+                            passed={metrics.scopePassed}
+                            failed={metrics.scopeFailed}
+                            blocked={metrics.scopeBlocked}
+                            pct={metrics.progressPct}
+                          />
                         </td>
                         <td><span className="tp-rate-num">{metrics.passRate}%</span></td>
+                        <td>
+                          {metrics.scopeExecuted > 0 ? (
+                            <StatusPill tone={metrics.passRate >= 80 ? 'passed' : metrics.passRate >= 50 ? 'pending' : 'failed'}>
+                              {metrics.passRate >= 80 ? 'Healthy' : metrics.passRate >= 50 ? 'At risk' : 'Critical'}
+                            </StatusPill>
+                          ) : (
+                            <span className="text-muted" style={{ fontSize: 12 }}>—</span>
+                          )}
+                        </td>
                         <td>
                           <button
                             className={`tp-status-toggle ${plan.status === 'Completed' ? 'tp-status-toggle--done' : 'tp-status-toggle--open'}`}
@@ -894,14 +939,27 @@ export function TestPlansPage() {
                         <span className="tp-card-meta-label">Pass rate</span>
                         <span>{metrics.passRate}%</span>
                       </div>
+                      {metrics.scopeFailed > 0 && (
+                        <div className="tp-card-meta-item">
+                          <span className="tp-card-meta-label">Failed</span>
+                          <span style={{ color: '#a93030', fontWeight: 700 }}>{metrics.scopeFailed}</span>
+                        </div>
+                      )}
+                      {metrics.scopeBlocked > 0 && (
+                        <div className="tp-card-meta-item">
+                          <span className="tp-card-meta-label">Blocked</span>
+                          <span style={{ color: '#7f1d1d', fontWeight: 700 }}>{metrics.scopeBlocked}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="tp-card-progress">
-                      <div className="req-progress-cell">
-                        <div className="req-progress-track">
-                          <span className="req-progress-fill" style={{ width: `${metrics.progressPct}%` }} />
-                        </div>
-                        <span className="req-progress-pct">{metrics.progressPct}%</span>
-                      </div>
+                      <SegBar
+                        total={metrics.scopeTotal}
+                        passed={metrics.scopePassed}
+                        failed={metrics.scopeFailed}
+                        blocked={metrics.scopeBlocked}
+                        pct={metrics.progressPct}
+                      />
                     </div>
                     <div className="tp-card-actions">
                       {metrics.scopeTotal > 0 && plan.status !== 'Completed' && (
@@ -984,6 +1042,7 @@ export function TestPlansPage() {
                     <tr>
                       <th>Milestone</th>
                       <th>Progress</th>
+                      <th>Pass rate</th>
                       <th>On track</th>
                       <th>Status</th>
                       <th></th>
@@ -1004,6 +1063,7 @@ export function TestPlansPage() {
                             <div className="tp-row-tags">
                               {dueDateStr && <span className="tp-tag">Due {dueDateStr}</span>}
                               {metrics.totalPlans > 0 && <span className="tp-tag">{metrics.totalPlans} plan{metrics.totalPlans !== 1 ? 's' : ''}</span>}
+                              {metrics.bugCount > 0 && <span className="tp-tag tp-tag--danger">{metrics.bugCount} bug{metrics.bugCount !== 1 ? 's' : ''}</span>}
                               {metrics.overdue && <span className="tp-tag tp-tag--danger">Overdue</span>}
                               {!metrics.overdue && metrics.daysLeft !== null && metrics.daysLeft >= 0 && (
                                 <span className={`tp-tag tp-tag--${urgencyTone}`}>{metrics.daysLeft}d left</span>
@@ -1014,16 +1074,25 @@ export function TestPlansPage() {
                                 </span>
                               )}
                             </div>
+                            {(metrics.scopePassed > 0 || metrics.scopeFailed > 0 || metrics.scopeBlocked > 0) && (
+                              <div className="tp-row-breakdown">
+                                {metrics.scopePassed > 0 && <span className="tp-bd tp-bd--pass">{metrics.scopePassed} passed</span>}
+                                {metrics.scopeFailed > 0 && <span className="tp-bd tp-bd--fail">{metrics.scopeFailed} failed</span>}
+                                {metrics.scopeBlocked > 0 && <span className="tp-bd tp-bd--block">{metrics.scopeBlocked} blocked</span>}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td>
-                          <div className="req-progress-cell">
-                            <div className="req-progress-track">
-                              <span className="req-progress-fill" style={{ width: `${metrics.progressPct}%` }} />
-                            </div>
-                            <span className="req-progress-pct">{metrics.progressPct}%</span>
-                          </div>
+                          <SegBar
+                            total={metrics.scopeTotal}
+                            passed={metrics.scopePassed}
+                            failed={metrics.scopeFailed}
+                            blocked={metrics.scopeBlocked}
+                            pct={metrics.progressPct}
+                          />
                         </td>
+                        <td><span className="tp-rate-num">{metrics.passRate}%</span></td>
                         <td>
                           <StatusPill tone={metrics.onTrack ? 'passed' : 'failed'}>
                             {metrics.onTrack ? 'On track' : 'At risk'}
@@ -1096,17 +1165,28 @@ export function TestPlansPage() {
                         <span className="tp-card-meta-label">Plans</span>
                         <span>{metrics.totalPlans}</span>
                       </div>
+                      <div className="tp-card-meta-item">
+                        <span className="tp-card-meta-label">Pass rate</span>
+                        <span>{metrics.passRate}%</span>
+                      </div>
+                      {metrics.scopeFailed > 0 && (
+                        <div className="tp-card-meta-item">
+                          <span className="tp-card-meta-label">Failed</span>
+                          <span style={{ color: '#a93030', fontWeight: 700 }}>{metrics.scopeFailed}</span>
+                        </div>
+                      )}
                       {metrics.overdue && (
                         <StatusPill tone="failed" style={{ fontSize: 10, minHeight: 20 }}>Overdue</StatusPill>
                       )}
                     </div>
                     <div className="tp-card-progress">
-                      <div className="req-progress-cell">
-                        <div className="req-progress-track">
-                          <span className="req-progress-fill" style={{ width: `${metrics.progressPct}%` }} />
-                        </div>
-                        <span className="req-progress-pct">{metrics.progressPct}%</span>
-                      </div>
+                      <SegBar
+                        total={metrics.scopeTotal}
+                        passed={metrics.scopePassed}
+                        failed={metrics.scopeFailed}
+                        blocked={metrics.scopeBlocked}
+                        pct={metrics.progressPct}
+                      />
                     </div>
                     <div className="tp-card-actions">
                       <button className="secondary-button" type="button" onClick={() => openEditMilestone(milestone)}>

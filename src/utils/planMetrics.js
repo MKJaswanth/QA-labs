@@ -16,7 +16,7 @@ export function getPlanTestCases(plan, requirements = [], testCases = []) {
   return testCases.filter((tc) => tcIdSet.has(tc.id))
 }
 
-export function getPlanMetrics(plan, runs = [], requirements = [], testCases = []) {
+export function getPlanMetrics(plan, runs = [], requirements = [], testCases = [], bugs = []) {
   const linkedRuns = runs.filter((r) => r.testPlanId === plan?.id)
   const completedRuns = linkedRuns.filter(isRunComplete)
 
@@ -44,6 +44,14 @@ export function getPlanMetrics(plan, runs = [], requirements = [], testCases = [
     (tc) => latestStatus[tc.id] && latestStatus[tc.id] !== 'Not Executed',
   ).length
   const scopePassed = scopeCases.filter((tc) => latestStatus[tc.id] === 'Pass').length
+  const scopeFailed = scopeCases.filter((tc) => latestStatus[tc.id] === 'Fail').length
+  const scopeBlocked = scopeCases.filter((tc) => latestStatus[tc.id] === 'Blocker').length
+
+  const linkedBugIds = new Set()
+  linkedRuns.forEach((run) => {
+    ;(run.cases || []).forEach((rc) => { if (rc.bugId) linkedBugIds.add(rc.bugId) })
+  })
+  const bugCount = bugs.filter((b) => linkedBugIds.has(b.id)).length
 
   // Progress: % of in-scope cases that have been executed
   // Falls back to run-completion % when scope info isn't available
@@ -66,17 +74,18 @@ export function getPlanMetrics(plan, runs = [], requirements = [], testCases = [
     completedRuns: completedRuns.length,
     progressPct,
     passRate,
-    // Scope-based counts
     scopeTotal,
     scopeExecuted,
     scopePassed,
-    // Legacy run-level counts (kept for backward compat)
+    scopeFailed,
+    scopeBlocked,
+    bugCount,
     totalCases: scopeTotal || runTotalCases,
     passedCases: scopePassed || runPassedCases,
   }
 }
 
-export function getMilestoneMetrics(milestone, plans = [], runs = [], requirements = [], testCases = []) {
+export function getMilestoneMetrics(milestone, plans = [], runs = [], requirements = [], testCases = [], bugs = []) {
   const planIds = new Set([
     ...(milestone?.testPlanIds ?? []),
     ...plans.filter((p) => p.milestoneId === milestone?.id).map((p) => p.id),
@@ -109,6 +118,14 @@ export function getMilestoneMetrics(milestone, plans = [], runs = [], requiremen
 
   const scopeExecuted = Object.values(latestStatus).filter((s) => s && s !== 'Not Executed').length
   const scopePassed = Object.values(latestStatus).filter((s) => s === 'Pass').length
+  const scopeFailed = Object.values(latestStatus).filter((s) => s === 'Fail').length
+  const scopeBlocked = Object.values(latestStatus).filter((s) => s === 'Blocker').length
+
+  const linkedBugIds = new Set()
+  linkedRuns.forEach((run) => {
+    ;(run.cases || []).forEach((rc) => { if (rc.bugId) linkedBugIds.add(rc.bugId) })
+  })
+  const bugCount = bugs.filter((b) => linkedBugIds.has(b.id)).length
 
   // Fallback run-level aggregates
   const runTotalCases = linkedRuns.reduce((s, r) => s + (r.total ?? 0), 0)
@@ -152,6 +169,9 @@ export function getMilestoneMetrics(milestone, plans = [], runs = [], requiremen
     scopeTotal,
     scopeExecuted,
     scopePassed,
+    scopeFailed,
+    scopeBlocked,
+    bugCount,
     totalCases: scopeTotal || runTotalCases,
     passedCases: scopePassed || runPassedCases,
     daysLeft,
