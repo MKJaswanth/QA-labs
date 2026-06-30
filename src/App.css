@@ -10025,77 +10025,97 @@ a.rr-bar-leg:hover { opacity: 0.75; color: var(--text-strong); }
   margin-bottom: 0 !important;
 }
 .proj-dash-empty {
-  padding: 20px 0;
+  padding: 28px 16px;
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
 }
 
 /* Recent runs list */
-.proj-run-list { display: flex; flex-direction: column; }
+.proj-run-list { display: flex; flex-direction: column; padding: 0 16px; }
 .proj-run-row {
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  gap: 10px;
-  padding: 9px 0;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
   border-bottom: 1px solid var(--border);
 }
 .proj-run-row:last-child { border-bottom: none; }
-.proj-run-row-main { display: flex; align-items: center; gap: 8px; min-width: 0; flex: 1; }
-.proj-run-name { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0; }
-.proj-run-build { font-size: 10.5px; color: var(--text-muted); background: var(--soft-bg); padding: 1px 5px; border-radius: 3px; white-space: nowrap; }
+.proj-run-row-main { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+.proj-run-name {
+  font-size: 13px; font-weight: 600;
+  color: var(--text-strong);
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.proj-run-build {
+  font-size: 10.5px; color: var(--text-muted);
+  background: var(--soft-bg); border: 1px solid var(--border);
+  padding: 1px 6px; border-radius: 4px;
+  white-space: nowrap; flex-shrink: 0;
+}
 .proj-run-row-meta { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .proj-run-date { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 
 /* Milestones list */
-.proj-milestone-list { display: flex; flex-direction: column; gap: 10px; }
+.proj-milestone-list { display: flex; flex-direction: column; padding: 4px 16px; }
 .proj-milestone-row {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 12px;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
 }
-.proj-milestone-row-main { flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-.proj-milestone-name { font-size: 13px; font-weight: 700; color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.proj-milestone-row:last-child { border-bottom: none; }
+.proj-milestone-row-main { flex: 1; display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.proj-milestone-name {
+  font-size: 13px; font-weight: 700;
+  color: var(--text-strong);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 .proj-milestone-bar-wrap { display: flex; align-items: center; gap: 8px; }
-.proj-milestone-bar {
-  flex: 1; height: 5px; background: var(--soft-bg);
-  border-radius: 99px; overflow: hidden;
-}
+.proj-milestone-bar { flex: 1; height: 4px; background: var(--soft-bg); border-radius: 99px; overflow: hidden; }
 .proj-milestone-bar span { display: block; height: 100%; border-radius: inherit; }
-.proj-milestone-pct { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
-.proj-milestone-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+.proj-milestone-pct { font-size: 11px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; min-width: 28px; text-align: right; }
+.proj-milestone-row-right { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; padding-top: 1px; }
 .proj-milestone-due { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 
 /* Bug list */
-.proj-bug-list { display: flex; flex-direction: column; }
+.proj-bug-list { display: flex; flex-direction: column; padding: 0 16px; }
 .proj-bug-row {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  padding: 8px 0;
+  gap: 4px;
+  padding: 11px 0;
   border-bottom: 1px solid var(--border);
 }
 .proj-bug-row:last-child { border-bottom: none; }
-.proj-bug-row-main { display: flex; align-items: center; gap: 7px; min-width: 0; }
-.proj-bug-title { font-size: 12.5px; font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.proj-bug-row-meta { display: flex; gap: 8px; padding-left: 2px; }
-.proj-bug-status { font-size: 10.5px; color: var(--text-muted); }
-.proj-bug-date { font-size: 10.5px; color: var(--text-muted); }
+.proj-bug-row-main { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.proj-bug-title {
+  font-size: 13px; font-weight: 600;
+  color: var(--text-strong);
+  flex: 1; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.proj-bug-row-meta { display: flex; align-items: center; gap: 5px; }
+.proj-bug-status { font-size: 11px; color: var(--text-muted); }
+.proj-bug-sep { font-size: 11px; color: var(--border-strong); line-height: 1; }
+.proj-bug-date { font-size: 11px; color: var(--text-muted); }
 
 /* Coverage snapshot */
-.proj-coverage-rows { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
-.proj-coverage-row { display: flex; align-items: center; gap: 10px; }
-.proj-cov-label { font-size: 12px; color: var(--text-muted); width: 100px; flex-shrink: 0; }
-.proj-cov-bar-wrap { flex: 1; }
-.proj-cov-bar {
-  height: 8px; background: var(--soft-bg); border-radius: 99px;
-  overflow: hidden; display: flex;
-}
+.proj-coverage-rows { display: flex; flex-direction: column; gap: 14px; padding: 16px 16px 14px; margin-bottom: 0; }
+.proj-coverage-row { display: flex; align-items: center; gap: 12px; }
+.proj-cov-label { font-size: 12px; color: var(--text-muted); width: 96px; flex-shrink: 0; }
+.proj-cov-bar-wrap { flex: 1; min-width: 0; }
+.proj-cov-bar { height: 6px; background: var(--soft-bg); border-radius: 99px; overflow: hidden; display: flex; }
 .proj-cov-bar span { height: 100%; display: block; }
-.proj-cov-pct { font-size: 12px; font-weight: 700; color: var(--text-strong); width: 80px; flex-shrink: 0; text-align: right; }
-.proj-coverage-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.proj-cov-pct { font-size: 12px; font-weight: 700; color: var(--text-strong); width: 76px; flex-shrink: 0; text-align: right; }
+.proj-coverage-chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border);
+}
 .proj-cov-chip {
   font-size: 11px; font-weight: 600;
   padding: 2px 8px; border-radius: 20px;

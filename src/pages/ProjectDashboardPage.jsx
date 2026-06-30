@@ -299,7 +299,10 @@ export function ProjectDashboardPage() {
                     <div className="proj-bug-row-meta">
                       <span className="proj-bug-status">{bug.status || 'Open'}</span>
                       {bug.reportedDate && (
-                        <span className="proj-bug-date">{new Date(bug.reportedDate).toLocaleDateString()}</span>
+                        <>
+                          <span className="proj-bug-sep">·</span>
+                          <span className="proj-bug-date">{new Date(bug.reportedDate).toLocaleDateString()}</span>
+                        </>
                       )}
                     </div>
                   </div>
