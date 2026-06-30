@@ -4,7 +4,7 @@ import { PageHeader } from '../components/PageHeader'
 import { StatusPill } from '../components/StatusPill'
 import { useTestRuns } from '../hooks/useTestRuns'
 import { useBugs } from '../hooks/useBugs'
-import { STATUS_TONE } from '../utils/status'
+import { STATUS_TONE, TEST_STATUSES, summarizeStatuses } from '../utils/status'
 import { BugIcon, ShieldCheckIcon, CheckCircleIcon } from '../components/Icons'
 import { PassRing, Bar } from '../components/Charts'
 
@@ -58,6 +58,19 @@ export function TestRunDetailPage() {
   const handleNameKeyDown = (e) => {
     if (e.key === 'Enter') saveName()
     if (e.key === 'Escape') setEditingName(false)
+  }
+
+  const updateCaseStatus = (caseIdx, newStatus) => {
+    const updatedCases = run.cases.map((c, i) => i === caseIdx ? { ...c, status: newStatus } : c)
+    const summary = summarizeStatuses(updatedCases)
+    const passRate = summary.total ? Math.round((summary.passed / summary.total) * 100) : 0
+    updateRun({
+      ...run,
+      cases: updatedCases,
+      failureModules: getFailureModules(updatedCases),
+      passRate,
+      ...summary,
+    })
   }
 
   const rate = run.total ? Math.round((run.passed / run.total) * 100) : 0
@@ -222,9 +235,14 @@ export function TestRunDetailPage() {
                     <td>{tc.module || '-'}</td>
                     <td>{tc.priority || '-'}</td>
                     <td>
-                      <StatusPill tone={STATUS_TONE[tc.status] ?? 'pending'}>
-                        {tc.status}
-                      </StatusPill>
+                      <select
+                        className={`inline-select status-select status-select--${STATUS_TONE[tc.status] ?? 'pending'}`}
+                        value={tc.status || 'Not Executed'}
+                        aria-label={`Status for ${tc.title}`}
+                        onChange={(e) => updateCaseStatus(idx, e.target.value)}
+                      >
+                        {TEST_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+                      </select>
                     </td>
                     <td style={{ whiteSpace: 'normal' }}>
                       {tc.actual || <span className="text-muted">Not recorded</span>}
