@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { useProjects } from '../hooks/useProjects'
 import { useTeamMembers } from '../hooks/useTeamMembers'
+import { useRequirements } from '../hooks/useRequirements'
+import { useTestCases } from '../hooks/useTestCases'
 import { useToast } from '../context/useToast'
 
 const STEPS = [
@@ -86,7 +88,7 @@ function TeamStep({ onComplete }) {
   const handleAdd = (e) => {
     e.preventDefault()
     if (!name.trim()) return
-    addMember({ name: name.trim(), role })
+    addMember(name.trim(), role)
     toast.success(`${name.trim()} added as ${role}`)
     setName('')
   }
@@ -142,8 +144,10 @@ function TeamStep({ onComplete }) {
   )
 }
 
-function RequirementsStep({ onComplete }) {
+function RequirementsStep({ onComplete, projectId }) {
   const toast = useToast()
+  const { addRequirement } = useRequirements(projectId)
+  const { addTestCase } = useTestCases(projectId)
   const [items, setItems] = useState([{ title: '', description: '' }])
   const [mode, setMode] = useState('requirements') // 'requirements' | 'testcases'
 
@@ -161,8 +165,14 @@ function RequirementsStep({ onComplete }) {
       toast.error('Add at least one item')
       return
     }
-    // We'll save these after navigating to the right page
-    toast.success(`${valid.length} ${mode} ready to add`)
+    valid.forEach((item) => {
+      if (mode === 'requirements') {
+        addRequirement({ title: item.title.trim(), description: item.description.trim() })
+      } else {
+        addTestCase({ title: item.title.trim(), expected: item.description.trim() })
+      }
+    })
+    toast.success(`${valid.length} ${mode === 'requirements' ? 'requirement' : 'test case'}${valid.length !== 1 ? 's' : ''} added`)
     onComplete()
   }
 
@@ -259,7 +269,38 @@ function RunStep({ onComplete }) {
   )
 }
 
+function WelcomeStep({ onStart, onSkip }) {
+  return (
+    <>
+      <div className="onboarding-header">
+        <div className="onboarding-brand">
+          <span className="brand-mark" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+              <path d="m9 11 2 2 4-4" />
+            </svg>
+          </span>
+          <span>QA Lab</span>
+        </div>
+        <h1>Welcome to QA Lab</h1>
+        <p>Take a quick guided tour to set up your first project, or skip it and explore on your own.</p>
+      </div>
+      <div className="onboarding-body">
+        <div className="onboarding-actions" style={{ justifyContent: 'center', marginTop: 8 }}>
+          <button type="button" className="ghost-button" onClick={onSkip}>
+            Skip, I'll explore
+          </button>
+          <button type="button" className="primary-button" onClick={onStart}>
+            Take the tour
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
 export function OnboardingWizard({ onComplete }) {
+  const [started, setStarted] = useState(false)
   const [step, setStep] = useState(0)
   const { projects } = useProjects()
   const projectId = projects[0]?.id
@@ -277,38 +318,44 @@ export function OnboardingWizard({ onComplete }) {
   return (
     <div className="onboarding-backdrop">
       <div className="onboarding-card">
-        <div className="onboarding-header">
-          <div className="onboarding-brand">
-            <span className="brand-mark" aria-hidden="true">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-                <path d="m9 11 2 2 4-4" />
-              </svg>
-            </span>
-            <span>QA Lab</span>
-          </div>
-          <h1>{STEPS[step].title}</h1>
-          <p>{STEPS[step].description}</p>
-        </div>
+        {!started ? (
+          <WelcomeStep onStart={() => setStarted(true)} onSkip={onComplete} />
+        ) : (
+          <>
+            <div className="onboarding-header">
+              <div className="onboarding-brand">
+                <span className="brand-mark" aria-hidden="true">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <path d="m9 11 2 2 4-4" />
+                  </svg>
+                </span>
+                <span>QA Lab</span>
+              </div>
+              <h1>{STEPS[step].title}</h1>
+              <p>{STEPS[step].description}</p>
+            </div>
 
-        <StepIndicator current={step} total={STEPS.length} />
+            <StepIndicator current={step} total={STEPS.length} />
 
-        <div className="onboarding-body">
-          {step === 0 && <ProjectStep {...stepProps} />}
-          {step === 1 && <TeamStep {...stepProps} />}
-          {step === 2 && <RequirementsStep {...stepProps} />}
-          {step === 3 && <RunStep {...stepProps} />}
-        </div>
+            <div className="onboarding-body">
+              {step === 0 && <ProjectStep {...stepProps} />}
+              {step === 1 && <TeamStep {...stepProps} />}
+              {step === 2 && <RequirementsStep {...stepProps} />}
+              {step === 3 && <RunStep {...stepProps} />}
+            </div>
 
-        {step > 0 && step < STEPS.length - 1 && (
-          <div className="onboarding-footer">
-            <button type="button" className="ghost-button" onClick={() => setStep(step - 1)}>
-              Back
-            </button>
-            <button type="button" className="ghost-button" onClick={onComplete}>
-              Skip all
-            </button>
-          </div>
+            {step < STEPS.length - 1 && (
+              <div className="onboarding-footer">
+                <button type="button" className="ghost-button" onClick={() => (step === 0 ? setStarted(false) : setStep(step - 1))}>
+                  Back
+                </button>
+                <button type="button" className="ghost-button" onClick={onComplete}>
+                  Skip tour
+                </button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
