@@ -119,7 +119,7 @@ export function TrendLineChart({ runs }) {
   const lowest = Math.min(...points.map((p) => p.rate))
   const netDelta = latest - first
 
-  const lineColor = latest >= 70 ? '#0b766d' : latest >= 50 ? '#f59e0b' : '#ef4444'
+  const lineColor = latest >= 70 ? 'var(--success)' : latest >= 50 ? 'var(--warning)' : 'var(--danger)'
   const gradId = 'tcg'
   const gridLines = [0, 25, 50, 75, 100]
 
@@ -192,19 +192,19 @@ export function TrendLineChart({ runs }) {
         <div className="trend-stat-divider" />
         <div className="trend-stat">
           <span className="trend-stat-label">Change</span>
-          <strong className="trend-stat-value" style={{ color: netDelta > 0 ? '#0b766d' : netDelta < 0 ? '#ef4444' : 'var(--text-muted)' }}>
+          <strong className="trend-stat-value" style={{ color: netDelta > 0 ? 'var(--success)' : netDelta < 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
             {netDelta > 0 ? '↑' : netDelta < 0 ? '↓' : '—'}{netDelta !== 0 ? Math.abs(netDelta) + '%' : ''}
           </strong>
         </div>
         <div className="trend-stat-divider" />
         <div className="trend-stat">
           <span className="trend-stat-label">Best</span>
-          <strong className="trend-stat-value" style={{ color: '#0b766d' }}>{highest}%</strong>
+          <strong className="trend-stat-value" style={{ color: 'var(--success)' }}>{highest}%</strong>
         </div>
         <div className="trend-stat-divider" />
         <div className="trend-stat">
           <span className="trend-stat-label">Lowest</span>
-          <strong className="trend-stat-value" style={{ color: '#ef4444' }}>{lowest}%</strong>
+          <strong className="trend-stat-value" style={{ color: 'var(--danger)' }}>{lowest}%</strong>
         </div>
         <div className="trend-stat-divider" />
         <div className="trend-stat">

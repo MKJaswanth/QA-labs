@@ -12,6 +12,7 @@ import { useTestPlans } from '../hooks/useTestPlans'
 import { normalizeTestStatus } from '../utils/status'
 import { isOpenBug } from '../utils/reportMetrics'
 import { getMilestoneMetrics } from '../utils/planMetrics'
+import { getRunDraft } from '../utils/runDrafts'
 
 const SEV_TONE = { Critical: 'failed', Major: 'pending', Minor: 'neutral' }
 
@@ -85,9 +86,10 @@ export function ProjectDashboardPage() {
     return { total, passed, failed, blockers, passRate, openBugs, criticalBugs, coveredReqs, reqCovPct }
   }, [testCases, bugs, requirements])
 
-  const inProgressRuns = useMemo(() =>
-    runs.filter(r => !r.completedAt).sort((a, b) => new Date(b.date) - new Date(a.date)),
-  [runs])
+  // Runs are only persisted (via addRun) once completed — an in-progress run
+  // lives solely in the draft storage until finished, so check there instead
+  // of filtering the completed `runs` list (which never has one without completedAt).
+  const activeDraft = useMemo(() => getRunDraft(projectId), [projectId])
 
   const recentRuns = useMemo(() =>
     runs.filter(r => r.completedAt)
@@ -218,26 +220,26 @@ export function ProjectDashboardPage() {
         <StatCard
           label="Runs"
           value={runs.length}
-          sub={inProgressRuns.length > 0 ? `${inProgressRuns.length} in progress` : 'None active'}
-          tone={inProgressRuns.length > 0 ? 'warn' : 'neutral'}
+          sub={activeDraft ? '1 in progress' : 'None active'}
+          tone={activeDraft ? 'warn' : 'neutral'}
         />
       </div>
 
-      {/* In-progress runs — show prominently if any */}
-      {inProgressRuns.length > 0 && (
+      {/* In-progress run — show prominently if a draft exists */}
+      {activeDraft && (
         <div className="proj-active-runs">
           <div className="proj-active-runs-label">
             <span className="proj-active-dot" />
-            {inProgressRuns.length} run{inProgressRuns.length !== 1 ? 's' : ''} in progress
+            1 run in progress
           </div>
           <div className="proj-active-runs-list">
-            {inProgressRuns.map(run => (
-              <Link key={run.id} to={`${base}/test-runs/${run.id}`} className="proj-active-run-chip">
-                <span className="proj-active-run-name">{run.name || 'Untitled run'}</span>
-                {run.build && <span className="proj-active-run-build">{run.build}</span>}
-                <span className="proj-active-run-date">{new Date(run.date).toLocaleDateString()}</span>
-              </Link>
-            ))}
+            <Link to={`${base}/test-runs`} className="proj-active-run-chip">
+              <span className="proj-active-run-name">{activeDraft.runName || 'Unnamed run'}</span>
+              {activeDraft.build && <span className="proj-active-run-build">{activeDraft.build}</span>}
+              {activeDraft.startedAt && (
+                <span className="proj-active-run-date">{new Date(activeDraft.startedAt).toLocaleDateString()}</span>
+              )}
+            </Link>
           </div>
         </div>
       )}

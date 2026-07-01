@@ -159,7 +159,7 @@ export function TestRunsPage() {
   const [selectedTestPlanId, setSelectedTestPlanId] = useState('')
   const [linkedRequirementId, setLinkedRequirementId] = useState('')
   const [selectedFilterPlanId, setSelectedFilterPlanId] = useState('')
-  const [selectedIds, setSelectedIds] = useState(() => testCases.map((tc) => tc.id))
+  const [selectedIds, setSelectedIds] = useState([])
   const [currentIndex, setCurrentIndex] = useState(0)
   const activeCaseRef = useRef(null)
   const [showJunitModal, setShowJunitModal] = useState(false)
