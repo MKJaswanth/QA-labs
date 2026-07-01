@@ -60,7 +60,7 @@ const blank = (prefillTcId = '') => ({
 
 const shortId = (id) => id.slice(0, 8).toUpperCase()
 
-function BugForm({ form, setForm, testCases, requirements = [], members, onCancel, onSubmit, submitLabel, history = [], activities = [], disabled = false, tagSuggestions = [] }) {
+function BugForm({ form, setForm, testCases, requirements = [], members, moduleSuggestions = [], onCancel, onSubmit, submitLabel, history = [], activities = [], disabled = false, tagSuggestions = [] }) {
   const { user } = useUser()
   const set = (key) => (e) => setForm((c) => ({ ...c, [key]: e.target.value }))
 
@@ -85,7 +85,10 @@ function BugForm({ form, setForm, testCases, requirements = [], members, onCance
         </label>
         <label>
           Module
-          <input value={form.module} onChange={set('module')} placeholder="e.g. Auth, Checkout" />
+          <input value={form.module} onChange={set('module')} placeholder="e.g. Auth, Checkout" list="bug-module-suggestions" />
+          <datalist id="bug-module-suggestions">
+            {moduleSuggestions.map((m) => <option key={m} value={m} />)}
+          </datalist>
         </label>
       </div>
 
@@ -457,6 +460,7 @@ export function BugTrackerPage() {
 
 
   const bugModules = [...new Set(bugs.map((b) => b.module).filter(Boolean))]
+  const moduleOptions = [...new Set([...testCases.map((tc) => tc.module), ...bugModules])].filter(Boolean).sort()
   const bugAssignees = [...new Set(bugs.map((b) => b.assignedTo).filter(Boolean))]
   const allTags = [...new Set(bugs.flatMap((b) => b.tags || []))].sort((a, b) => a.localeCompare(b))
 
@@ -781,6 +785,7 @@ export function BugTrackerPage() {
             testCases={testCases}
             requirements={requirements}
             members={members}
+            moduleSuggestions={moduleOptions}
             onCancel={() => setShowAdd(false)}
             onSubmit={handleAdd}
             submitLabel="Log bug"
@@ -797,6 +802,7 @@ export function BugTrackerPage() {
             testCases={testCases}
             requirements={requirements}
             members={members}
+            moduleSuggestions={moduleOptions}
             history={editing.history}
             activities={getActivitiesByEntity('bug', editing.id)}
             onCancel={() => setEditing(null)}

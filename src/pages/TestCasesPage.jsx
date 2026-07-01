@@ -453,6 +453,8 @@ export function TestCasesPage() {
         .map((t) => t.module).filter(Boolean)
     )
   ], [testCases, fFolder])
+  // Unscoped module list — used for the log-bug modal's module suggestions
+  const allModuleNames = useMemo(() => [...new Set(testCases.map((t) => t.module).filter(Boolean))].sort(), [testCases])
   const allTags = [...new Set(testCases.flatMap((t) => t.tags || []))].sort((a, b) => a.localeCompare(b))
 
   const visible = sortedCases.filter((tc) => {
@@ -1255,7 +1257,10 @@ export function TestCasesPage() {
             </div>
             <label>
               Module
-              <input value={bugForm.module} onChange={setBug('module')} placeholder="e.g. Auth, Checkout" />
+              <input value={bugForm.module} onChange={setBug('module')} placeholder="e.g. Auth, Checkout" list="tc-bug-module-suggestions" />
+              <datalist id="tc-bug-module-suggestions">
+                {allModuleNames.map((m) => <option key={m} value={m} />)}
+              </datalist>
             </label>
             <label>
               Linked test case
