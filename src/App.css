@@ -536,10 +536,21 @@ textarea:focus {
 select {
   appearance: none;
   -webkit-appearance: none;
+  cursor: pointer;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23475569' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>");
   background-repeat: no-repeat;
   background-position: right 12px center;
   padding-right: 32px !important;
+}
+
+select:not(.status-select):not(.inline-select):not(.filter-active):hover {
+  border-color: var(--text-soft);
+  background-color: var(--soft-bg);
+}
+
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 select:focus {
@@ -1245,25 +1256,26 @@ tbody tr:hover {
 
 
 .inline-select {
-  height: 26px;
+  height: 28px;
+  min-width: 90px;
   font-size: 11.5px;
-  padding: 0 8px;
+  padding: 0 10px;
   width: auto;
+  border: 1px solid var(--border);
   border-radius: 6px;
+  background: var(--surface);
+  color: var(--text-strong);
   font-weight: 650;
+  box-sizing: border-box;
   cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
-
-.status-select { border: 1px solid var(--border); background: var(--surface); color: var(--text-strong); cursor: pointer; }
-.status-select--passed       { background: var(--status-passed-bg,  #e9f7ee); color: var(--status-passed-fg,  #1a6b37); border-color: #b6e4c8; }
-.status-select--failed       { background: var(--status-failed-bg,  #fef0f0); color: var(--status-failed-fg,  #a93030); border-color: #fecaca; }
-.status-select--blocker      { background: var(--status-blocker-bg, #fff1f0); color: var(--status-blocker-fg, #7f1d1d); border-color: #fca5a5; }
-.status-select--skipped      { background: var(--status-skipped-bg, #f5f5f5); color: var(--status-skipped-fg, #555);    border-color: #d4d4d4; }
-.status-select--pending      { background: var(--status-pending-bg, #f9fafb); color: var(--status-pending-fg, #6b7280); border-color: #e5e7eb; }
-.status-select--reported     { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
-.status-select--clarification{ background: #fefce8; color: #854d0e; border-color: #fde68a; }
-.status-select--inprogress   { background: #f0fdf4; color: #166534; border-color: #86efac; }
-.status-select--hold         { background: #fdf4ff; color: #7e22ce; border-color: #e9d5ff; }
+.inline-select:hover { border-color: var(--border-strong); box-shadow: 0 1px 3px rgba(23, 32, 31, 0.08); }
+.inline-select:focus {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-color: var(--accent);
+}
 
 /* ── 9. DASHBOARD WIDGETS & DETAILS GRID ─────────────────────────────── */
 .dashboard-details-grid {
@@ -3238,10 +3250,9 @@ button { font-family: inherit; }
   margin-left: 2px;
 }
 
-/* Inline status select — TestCasesPage badge-style dropdowns */
+/* Inline status/priority pill select — colored badge layer, combined with
+   .inline-select for box-model. Used across test cases, bugs, and runs. */
 .status-select {
-  appearance: none;
-  -webkit-appearance: none;
   border: 1px solid transparent;
   border-radius: 6px;
   min-width: 104px;
@@ -3258,36 +3269,38 @@ button { font-family: inherit; }
   white-space: nowrap;
   box-sizing: border-box;
   cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, filter 0.15s ease;
 }
-.status-select:hover { opacity: 0.86; }
+.status-select:hover { filter: brightness(0.96); border-color: var(--border-strong); }
 .status-select:focus {
   outline: none;
   box-shadow: var(--focus-ring);
   border-color: var(--accent);
 }
 
-.status-select--passed  { background: #e9f7ee; color: #1a6b37; }
-.status-select--failed  { background: #fef0f0; color: #a93030; }
-.status-select--pending { background: #fef8ec; color: #8a5a00; }
-.status-select--skipped { background: #f1f2f5; color: #4d5570; }
-.status-select--blocker { background: #fbe3e3; color: #7f1d1d; font-weight: 700; }
-.status-select--neutral { background: var(--soft-bg); color: var(--text-muted); border-color: var(--border); }
+.status-select--passed        { background: var(--status-passed-bg,  #e9f7ee); color: var(--status-passed-fg,  #1a6b37); }
+.status-select--failed        { background: var(--status-failed-bg,  #fef0f0); color: var(--status-failed-fg,  #a93030); }
+.status-select--pending       { background: var(--status-pending-bg, #fef8ec); color: var(--status-pending-fg, #8a5a00); }
+.status-select--skipped       { background: var(--status-skipped-bg, #f1f2f5); color: var(--status-skipped-fg, #4d5570); }
+.status-select--blocker       { background: var(--status-blocker-bg, #fbe3e3); color: var(--status-blocker-fg, #7f1d1d); font-weight: 800; }
+.status-select--reported      { background: #eff6ff; color: #1d4ed8; }
+.status-select--clarification { background: #fefce8; color: #854d0e; }
+.status-select--inprogress    { background: #f0fdf4; color: #166534; }
+.status-select--hold          { background: #fdf4ff; color: #7e22ce; }
+.status-select--neutral       { background: var(--soft-bg); color: var(--text-muted); border-color: var(--border); }
 
 .status-select.priority-high {
   background: #fff1f1;
   color: #9f1d1d;
-  border-color: #f3b8b8;
 }
 .status-select.priority-med,
 .status-select.priority-medium {
   background: #fff7e0;
   color: #855800;
-  border-color: #f1d48b;
 }
 .status-select.priority-low {
   background: #eef9f1;
   color: #176534;
-  border-color: #b9e4c4;
 }
 
 /* Utility classes */
@@ -4669,6 +4682,7 @@ button { font-family: inherit; }
   color: var(--accent, #2563eb);
   cursor: pointer; font-weight: 600;
 }
+.req-module-add-select:hover { background-color: color-mix(in srgb, var(--accent) 14%, var(--accent-soft, #eff6ff)); }
 .req-module-add-select:focus { outline: none; border-style: solid; background-image: none !important; }
 .req-module-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .req-module-chip {

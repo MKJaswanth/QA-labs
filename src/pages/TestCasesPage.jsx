@@ -750,7 +750,7 @@ export function TestCasesPage() {
                       <td>{tc.module || '—'}</td>
                       <td>
                         <select
-                          className={`inline-select priority-${(tc.priority || 'Med').toLowerCase()}`}
+                          className={`inline-select status-select priority-${(tc.priority || 'Med').toLowerCase()}`}
                           value={tc.priority || 'Med'}
                           aria-label="Priority"
                           disabled={!isLead}
