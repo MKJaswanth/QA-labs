@@ -248,6 +248,7 @@ export function TestRunsPage() {
   const [casePage, setCasePage] = useState(1)
   const [caseFolderFilter, setCaseFolderFilter] = useState('')
   const [caseModuleFilter, setCaseModuleFilter] = useState('')
+  const [caseStatusFilter, setCaseStatusFilter] = useState('')
 
   const sortedTestCases = useMemo(
     () => [...testCases].sort((a, b) => {
@@ -342,14 +343,20 @@ export function TestRunsPage() {
     return [...new Set(base.map((tc) => tc.module).filter(Boolean))].sort()
   }, [testCases, caseFolderFilter])
 
+  const availableStatuses = useMemo(
+    () => TEST_STATUSES.filter((s) => testCases.some((tc) => (tc.status || 'Not Executed') === s)),
+    [testCases],
+  )
+
   // Case-picker pagination (run setup). Selection (Select all / Clear / checked
   // ids) still operates on the full list, not just the visible page.
   const moduleFilteredCases = useMemo(() => {
     let cases = sortedTestCases
     if (caseFolderFilter) cases = cases.filter((tc) => (tc.folder || '') === caseFolderFilter)
     if (caseModuleFilter) cases = cases.filter((tc) => tc.module === caseModuleFilter)
+    if (caseStatusFilter) cases = cases.filter((tc) => (tc.status || 'Not Executed') === caseStatusFilter)
     return cases
-  }, [sortedTestCases, caseFolderFilter, caseModuleFilter])
+  }, [sortedTestCases, caseFolderFilter, caseModuleFilter, caseStatusFilter])
   const caseTotal = moduleFilteredCases.length
   const caseTotalPages = Math.max(1, Math.ceil(caseTotal / casePageSize))
   const caseCurrentPage = Math.min(casePage, caseTotalPages)
@@ -872,7 +879,7 @@ export function TestRunsPage() {
             </div>
           </div>
 
-          {(availableFolders.length > 0 || availableModules.length > 0) && (
+          {(availableFolders.length > 0 || availableModules.length > 0 || availableStatuses.length > 0) && (
             <div className="run-module-filter-bar">
               {availableFolders.length > 0 && (
                 <select
@@ -894,6 +901,17 @@ export function TestRunsPage() {
                 >
                   <option value="">All modules</option>
                   {availableModules.map((m) => <option key={m} value={m}>{m}</option>)}
+                </select>
+              )}
+              {availableStatuses.length > 0 && (
+                <select
+                  value={caseStatusFilter}
+                  onChange={(e) => { setCaseStatusFilter(e.target.value); setCasePage(1) }}
+                  aria-label="Filter cases by status"
+                  className={caseStatusFilter ? 'filter-active' : ''}
+                >
+                  <option value="">All statuses</option>
+                  {availableStatuses.map((s) => <option key={s} value={s}>{s}</option>)}
                 </select>
               )}
               {caseFolderFilter && !caseModuleFilter && (
@@ -941,6 +959,30 @@ export function TestRunsPage() {
                     }}
                   >
                     Deselect module
+                  </button>
+                </>
+              )}
+              {caseStatusFilter && (
+                <>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      const ids = testCases.filter((tc) => (tc.status || 'Not Executed') === caseStatusFilter).map((tc) => tc.id)
+                      setSelectedIds((prev) => [...new Set([...prev, ...ids])])
+                    }}
+                  >
+                    Select all with status
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      const ids = new Set(testCases.filter((tc) => (tc.status || 'Not Executed') === caseStatusFilter).map((tc) => tc.id))
+                      setSelectedIds((prev) => prev.filter((id) => !ids.has(id)))
+                    }}
+                  >
+                    Deselect status
                   </button>
                 </>
               )}
