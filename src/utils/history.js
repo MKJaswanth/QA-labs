@@ -30,7 +30,39 @@ export function describeTestCaseChanges(before, after) {
     qaRemarks: 'QA remarks',
   }
 
-  return Object.entries(labels)
+  const fieldChanges = Object.entries(labels)
     .filter(([key]) => (before[key] ?? '') !== (after[key] ?? ''))
     .map(([, label]) => `${label} changed`)
+
+  if (JSON.stringify(before.steps || []) !== JSON.stringify(after.steps || [])) {
+    fieldChanges.push('Steps updated')
+  }
+
+  if (JSON.stringify(before.tags || []) !== JSON.stringify(after.tags || [])) {
+    fieldChanges.push('Tags updated')
+  }
+
+  return fieldChanges
+}
+
+export function createTestCaseVersionSnapshot(currentTc, user, changes = []) {
+  const existingHistory = currentTc.versionHistory || []
+  const nextVersion = existingHistory.length + 1
+
+  return {
+    version: nextVersion,
+    timestamp: new Date().toISOString(),
+    user: user || 'Anonymous',
+    changes: changes.length ? changes : ['Initial version / baseline'],
+    snapshot: {
+      title: currentTc.title,
+      module: currentTc.module || '',
+      scenario: currentTc.scenario || '',
+      priority: currentTc.priority || 'Med',
+      status: currentTc.status,
+      steps: currentTc.steps || [],
+      expected: currentTc.expected || '',
+      actual: currentTc.actual || '',
+    },
+  }
 }

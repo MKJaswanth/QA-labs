@@ -15,7 +15,7 @@ import { useTeamMembers } from '../hooks/useTeamMembers'
 import { useTestCases } from '../hooks/useTestCases'
 import { useActivity } from '../hooks/useActivity'
 import { useSharedSteps } from '../hooks/useSharedSteps'
-import { describeTestCaseChanges, historyEntry, withHistory } from '../utils/history'
+import { createTestCaseVersionSnapshot, describeTestCaseChanges, historyEntry, withHistory } from '../utils/history'
 import { newId } from '../utils/id'
 import { STATUS_TONE, TEST_STATUSES } from '../utils/status'
 import { ArrowRightIcon } from '../components/Icons'
@@ -95,6 +95,10 @@ export function TestCaseDetailPage() {
       updatedBy: user,
     }
     const changes = describeTestCaseChanges(tc, updated)
+    if (changes.length) {
+      const versionSnapshot = createTestCaseVersionSnapshot(updated, user, changes)
+      updated.versionHistory = [...(tc.versionHistory || []), versionSnapshot]
+    }
     updateTestCase(changes.length
       ? withHistory(updated, historyEntry('update', user, changes.join(', ')))
       : updated)
@@ -325,6 +329,34 @@ export function TestCaseDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Version History */}
+          <div className="panel">
+            <div className="section-header">
+              <h2>Version History <span className="count-badge">{tc.versionHistory?.length || 0}</span></h2>
+            </div>
+            {!tc.versionHistory || tc.versionHistory.length === 0 ? (
+              <div className="empty-table-row">No version snapshots recorded yet. (Initial baseline)</div>
+            ) : (
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {[...tc.versionHistory].reverse().map((ver) => (
+                  <div key={ver.version} style={{ padding: '12px', borderRadius: '6px', border: '1px solid var(--border-color, #e0e0e0)', backgroundColor: 'var(--bg-subtle, #f9f9f9)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontWeight: 600 }}>
+                      <span>Version {ver.version}</span>
+                      <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+                        {new Date(ver.timestamp).toLocaleString()} by {resolveUserUid(ver.user, ver.user)}
+                      </span>
+                    </div>
+                    <ul style={{ margin: 0, paddingLeft: '20px', fontSize: '0.9rem', color: 'var(--text-color, #333)' }}>
+                      {(ver.changes || []).map((chg, idx) => (
+                        <li key={idx}>{chg}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Linked bugs */}
           <div className="panel">
